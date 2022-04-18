@@ -27,12 +27,15 @@ VideoGet::VideoGet()
     isStopping							= false;
     isStopped							= false;
 
-    // Create VideoCapture object for reading video file.
-    cap = VideoCapture();
-    cap.set(CV_CAP_PROP_FRAME_WIDTH, 640);
-    cap.set(CV_CAP_PROP_FRAME_HEIGHT, 480);
-    cap.set(CV_CAP_PROP_FPS, 30);
-    cap.open(0);
+    // Create VideoCapture object for reading video from virtual cam if enabled.
+    if (USE_VIRTUAL_CAM)
+    {
+        cap = VideoCapture();
+        cap.set(CV_CAP_PROP_FRAME_WIDTH, 640);
+        cap.set(CV_CAP_PROP_FRAME_HEIGHT, 480);
+        cap.set(CV_CAP_PROP_FPS, 30);
+        cap.open(0);
+    }
 }
 
 /****************************************************************************
@@ -58,7 +61,7 @@ VideoGet::~VideoGet()
 
         Returns: 		Nothing
 ****************************************************************************/
-void VideoGet::StartCapture(Mat &frame, bool &cameraSourceIndex, bool &drivingMode, shared_timed_mutex &Mutex)
+void VideoGet::StartCapture(Mat &frame, bool &cameraSourceIndex, bool &drivingMode, vector<CvSink> &cameraSinks, shared_timed_mutex &Mutex)
 {
     // Continuously grab camera frames.
     while (1)
@@ -71,57 +74,32 @@ void VideoGet::StartCapture(Mat &frame, bool &cameraSourceIndex, bool &drivingMo
             // Acquire resource lock for thread.
             lock_guard<shared_timed_mutex> guard(Mutex);		// unique_lock
 
-            // Read frame from video file.
-            cap >> frame;
+            // Check if we are using virtual camera.
+            if (USE_VIRTUAL_CAM)
+            {
+                // Read frame from video file.
+                cap >> frame;
+            }
+            else
+            {
+                // If the frame is empty, stop the capture.
+                if (cameraSinks.empty())
+                {
+                    break;
+                }
 
-            // // If the frame is empty, stop the capture.
-            // if (cameraSinks.empty())
-            // {
-            // 	break;
-            // }
-
-            // // Grab frame from either camera1 or camera2.
-            // static bool bToggle = false;
-            // if (drivingMode)
-            // {
-            // 	// Set camera properties.
-            // 	cameras[0].SetBrightness(10);
-            // 	cameras[0].SetExposureAuto();
-            // 	cameras[0].SetWhiteBalanceAuto();
-            // 	cameras[1].SetBrightness(10);
-            // 	cameras[1].SetExposureAuto();
-            // 	cameras[1].SetWhiteBalanceAuto();
-            // 	// Set toggle var.
-            // 	bToggle = false;
-            // }
-            // else
-            // {
-            // 	// Only set properties once.
-            // 	if (!bToggle)
-            // 	{
-            // 		// Set camera properties.
-            // 		cameras[0].SetBrightness(0);
-            // 		cameras[0].SetExposureManual(20);
-            // 		// Set camera properties.
-            // 		cameras[1].SetBrightness(10);
-            // 		cameras[1].SetExposureAuto();
-            // 		cameras[1].SetWhiteBalanceAuto();
-            // 		// Set toggle var.
-            // 		bToggle = true;
-            // 	}
-            // }
-
-            // // Get camera frames.
-            // if (cameraSourceIndex)
-            // {
-            // 	// Get camera frame.
-            // 	cameraSinks[1].GrabFrame(frame);
-            // }
-            // else
-            // {
-            // 	// Get camera frame.
-            // 	cameraSinks[0].GrabFrame(frame);
-            // }
+                // Grab frame from either camera1 or camera2.
+                if (cameraSourceIndex)
+                {
+                    // Get camera frame.
+                    cameraSinks[1].GrabFrame(frame);
+                }
+                else
+                {
+                    // Get camera frame.
+                    cameraSinks[0].GrabFrame(frame);
+                }
+            }
         }
         catch (const exception& e)
         {

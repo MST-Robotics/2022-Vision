@@ -20,15 +20,20 @@
 #include <vector>
 
 #include "FPS.h"
+
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/opencv.hpp>
 #include <opencv/cv.hpp>
+#include <cameraserver/CameraServer.h>
 
 using namespace std;
 using namespace cv;
-///////////////////////////////////////////////////////////////////////////////
+using namespace cs;
 
+// Define constants.
+const bool USE_VIRTUAL_CAM = true;
+///////////////////////////////////////////////////////////////////////////////
 
 class VideoGet
 {
@@ -36,7 +41,7 @@ public:
     // Declare class methods.
     VideoGet();
     ~VideoGet();
-    void StartCapture(Mat &frame, bool &cameraSourceIndex, bool &drivingMode, shared_timed_mutex &Mutex);
+    void StartCapture(Mat &frame, bool &cameraSourceIndex, bool &drivingMode, vector<CvSink> &cameraSinks, shared_timed_mutex &Mutex);
     void SetIsStopping(bool isStopping);
     bool GetIsStopped();
     int GetFPS();
