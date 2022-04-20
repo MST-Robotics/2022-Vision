@@ -32,7 +32,7 @@ using namespace cv;
 using namespace cs;
 
 // Define constants.
-const bool USE_VIRTUAL_CAM = true;
+const bool USE_VIRTUAL_CAM = false;
 ///////////////////////////////////////////////////////////////////////////////
 
 class VideoGet

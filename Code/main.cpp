@@ -83,7 +83,7 @@ using namespace rapidjson;
 
 // Store config file.
 static const char* configFile = "/boot/frc.json";
-static const char* visionTuningFile = "/home/pi/UnderwaterRoboticsVision/MATE_2022/Code/trackbar_values.json";
+static const char* VisionTuningFilePath = "/home/pi/2022-Vision/Code/trackbar_values.json";
 
 // Create namespace variables, stucts, and objects.
 unsigned int team;
@@ -436,10 +436,11 @@ int main(int argc, char* argv[])
 	}
 
 	// Open vision trackbar json for reading and writing.
-	FILE* jsonFile = fopen(visionTuningFile, "r");
+	FILE* jsonFile = fopen(VisionTuningFilePath, "r");
 	// Check if file was successfully opened.
 	if (jsonFile == nullptr)
 	{
+		cout << "ERROR: Unable to find, open, or load trackbar JSON file. Check that it exist at this path (" << VisionTuningFilePath << ") and that it is not corrupt." << endl;
 		return EXIT_FAILURE;
 	}
 	
@@ -841,7 +842,7 @@ int main(int argc, char* argv[])
 						cout << output << endl;
 
 						// Reopen and clear json file.
-						FILE* file = fopen(visionTuningFile, "w");
+						FILE* file = fopen(VisionTuningFilePath, "w");
 						// Write string contents to file and close it.
 						fwrite(output , sizeof(output[0]), strlen(output), file);
 						fclose(file);
@@ -888,8 +889,15 @@ int main(int argc, char* argv[])
 		NetworkTable->PutBoolean("Restart Program", false);
 		// Sleep to allow the dashboard time to update.
 		this_thread::sleep_for(std::chrono::milliseconds(500));
-		
-		// Kill program.
-		return EXIT_SUCCESS;
 	}
+	else
+	{
+		// Print message if no cameras have been detected.
+		cout << "No cameras were detected or no configs have been given from the dashboard." << endl;
+	}
+
+	// Print kill message.
+	cout << "Program stopped." << endl;
+	// Kill program.
+	return EXIT_SUCCESS;
 }

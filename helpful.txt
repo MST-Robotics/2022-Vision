@@ -1,0 +1,33 @@
+// To install v4l2loopback-dkms and dkms on RPI.
+// Must have 32-bit OS and kernel OR 64-bit OS and kernal, just make sure they match.
+// Try this first, if it fails then continue.
+sudo apt install raspberrypi-kernel-headers
+sudo apt install v4l2loopback-dkms
+
+// Manual method.
+https://github.com/notro/rpi-source/wiki
+sudo apt-get install git bc bison flex libssl-dev libncurses5-dev
+sudo wget https://raw.githubusercontent.com/notro/rpi-source/master/rpi-source -O /usr/local/bin/rpi-source && sudo chmod +x /usr/local/bin/rpi-source && /usr/local/bin/rpi-source -q --tag-update
+rpi-source
+// This will correctly install all linux headers.
+// Finally, install v4l2loopback
+sudo apt install v4l2loopback-dkms
+
+// This is for syncing the time, must be connected to the internet.
+apt install ntp
+systemctl enable ntp
+timdatectl set-ntp 1
+ntpd -q -g
+
+// Add virtual usb camera.
+sudo apt install v4l2loopback-dkms
+sudo modprobe v4l2loopback
+ffmpeg -stream_loop -1 -re -i input.mp4 -map 0:v -f v4l2 /dev/video0
+// If v4l2loopback complains about kernel.
+sudo apt full-upgrade
+
+// Use this to stream to a fake video devies from a video file. (must do sudo modprobe v4l2loopback first)
+ffmpeg -stream_loop -1 -re -i vid2.mp4 -map 0:v -f v4l2 /dev/video0
+
+// If apt give tmp errors.
+sudo chmod 1777 /tmp
