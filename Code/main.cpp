@@ -2,6 +2,7 @@
 #include <chrono>
 #include <string>
 #include <thread>
+#include <future>
 #include <mutex>
 #include <shared_mutex>
 #include <iostream>
@@ -20,7 +21,6 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/opencv.hpp>
-#include <opencv/cv.hpp>
 #include <networktables/NetworkTableInstance.h>
 #include <vision/VisionPipeline.h>
 #include <vision/VisionRunner.h>
@@ -84,6 +84,7 @@ using namespace rapidjson;
 // Store config file.
 static const char* configFile = "/boot/frc.json";
 static const char* VisionTuningFilePath = "/home/pi/2022-Vision/Code/trackbar_values.json";
+static const char* YoloModelOnnxFilePath = "/home/pi/2022-Vision/YOLO_Models/COCO_v5n_Test/yolov5n.onnx";
 
 // Create namespace variables, stucts, and objects.
 unsigned int team;
@@ -542,10 +543,17 @@ int main(int argc, char* argv[])
 		vector<double> trackingResults {};
 		vector<double> solvePNPValues {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
-		// Start multi-threading.
+		// Start classes multi-threading.
 		thread VideoGetThread(&VideoGet::StartCapture, &VideoGetter, ref(frame), ref(cameraSourceIndex), ref(drivingMode), ref(cameraSinks), ref(MutexGet));
 		thread VideoProcessThread(&VideoProcess::Process, &VideoProcessor, ref(frame), ref(finalImg), ref(targetCenterX), ref(targetCenterY), ref(centerLineTolerance), ref(contourAreaMinLimit), ref(contourAreaMaxLimit), ref(tuningMode), ref(drivingMode), ref(trackingMode), ref(takeShapshot), ref(enableSolvePNP), ref(trackbarValues), ref(trackingResults), ref(solvePNPValues), ref(VideoGetter), ref(MutexGet), ref(MutexShow));
 		thread VideoShowerThread(&VideoShow::ShowFrame, &VideoShower, ref(finalImg), ref(cameraSources), ref(MutexShow));
+		
+		// Start temporary thread for loading yolo model.
+		// future<dnn::Net> onnxModel = async(dnn::readNet, YoloModelOnnxFilePath);
+		// cout << "Net Is Valid: " << onnxModel.valid() << endl;
+		cout << "Attempting to load model..." << endl;
+		auto net = dnn::readNetFromONNX(YoloModelOnnxFilePath);
+		cout << "Model is loaded." << endl;
 
 		while (1)
 		{
