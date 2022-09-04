@@ -24,21 +24,11 @@ VideoProcess::VideoProcess()
     FPSCounter							    = new FPS();
     
     // Initialize member variables.
-    kernel								    = getStructuringElement(MORPH_ELLIPSE, Size(3, 3));
-    FPSCount								= 0;
-    greenBlurRadius						    = 3;
-    horizontalAspect						= 4;
-    verticalAspect						    = 3;
-    cameraFOV							    = 75;
-    screenWidth							    = 640;
-    screenHeight							= 480;
-    focalLength							    = (screenWidth / 2.0) / tan((cameraFOV * PI / 180.0) / 2.0);
+    FPSCount                                = 0;
     isStopping							    = false;
     isStopped							    = false;
-    
-    ////
+
     // Setup colors and ranges for box tape detection. (lowerthresh, upperthresh, tracking overlay color(B,G,R))
-    ////
     colorRanges.emplace_back(vector<Scalar> { Scalar(91, 219, 118), Scalar(255, 255, 157), Scalar(255, 156, 64) });         // lightblue
     colorRanges.emplace_back(vector<Scalar> { Scalar(100, 230, 45), Scalar(255, 255, 95), Scalar(219, 4, 12) });            // blue
     colorRanges.emplace_back(vector<Scalar> { Scalar(0, 228, 90), Scalar(68, 255, 163), Scalar(0, 242, 255) });             // yellow
@@ -55,7 +45,6 @@ VideoProcess::VideoProcess()
     ////
     // Setup SolvePNP data.
     ////
-
     // Reference object points.
     objectPoints.emplace_back(Point3f(39.50, 0.0, 0.0));
     objectPoints.emplace_back(Point3f(29.50, -17.0, 0.0));
@@ -100,7 +89,7 @@ VideoProcess::~VideoProcess()
 
         Returns: 		Nothing
 ****************************************************************************/
-void VideoProcess::Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &targetCenterY, int &centerLineTolerance, double &contourAreaMinLimit, double &contourAreaMaxLimit, bool &tuningMode, bool &drivingMode, int &trackingMode, bool &takeShapshot, bool &solvePNPEnabled, vector<int> &trackbarValues, vector<double> &trackingResults, vector<double> &solvePNPValues, VideoGet &VideoGetter, shared_timed_mutex &MutexGet, shared_timed_mutex &MutexShow)
+void VideoProcess::Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &targetCenterY, int &centerLineTolerance, double &contourAreaMinLimit, double &contourAreaMaxLimit, bool &tuningMode, bool &drivingMode, int &trackingMode, bool &takeShapshot, bool &solvePNPEnabled, vector<int> &trackbarValues, vector<double> &trackingResults, vector<double> &solvePNPValues, vector<string> &classList, cv::dnn::Net &onnxModel, VideoGet &VideoGetter, shared_timed_mutex &MutexGet, shared_timed_mutex &MutexShow)
 {
     // Give other threads enough time to start before processing camera frames.
     this_thread::sleep_for(std::chrono::milliseconds(800));
@@ -140,13 +129,13 @@ void VideoProcess::Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &t
                             // Convert image from RGB to HSV.
                             cvtColor(frame, HSVImg, COLOR_BGR2HSV);
                             // Blur the image.
-                            blur(HSVImg, blurImg, Size(greenBlurRadius, greenBlurRadius));
+                            blur(HSVImg, blurImg, Size(GREEN_BLUR_RADIUS, GREEN_BLUR_RADIUS));
                             // Filter out specific color in image.
                             inRange(blurImg, Scalar(trackbarValues[0], trackbarValues[2], trackbarValues[4]), Scalar(trackbarValues[1], trackbarValues[3], trackbarValues[5]), filterImg);
                             // Remove small blobs.
-                            erode(filterImg, dilateImg, kernel);
+                            erode(filterImg, dilateImg, KERNEL);
                             // "Inflate" image.
-                            dilate(dilateImg, dilateImg, kernel);
+                            dilate(dilateImg, dilateImg, KERNEL);
 
                             // Find countours of image.
                             findContours(dilateImg, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);		////RETR_TREE //// TRY CHAIN_APPROX_SIMPLE		//// Not sure what this method of detection does, but it worked before: CHAIN_APPROX_TC89_KCOS
@@ -215,7 +204,7 @@ void VideoProcess::Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &t
                                     // Remove the line we just found.
                                     hullExtremes.erase(remove(hullExtremes.begin(), hullExtremes.end(), tallestLine1));
                                     // Find the next tallest line segment.
-                                    vector<int> tallestLine2 = {screenWidth, 0, screenWidth, minLineLength};
+                                    vector<int> tallestLine2 = {SCREEN_WIDTH, 0, SCREEN_WIDTH, minLineLength};
                                     for (vector<int> line : hullExtremes)
                                     {
                                         // Compare the y distance of the line to the currently stored biggest one.
@@ -237,7 +226,7 @@ void VideoProcess::Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &t
                                     }
 
                                     // Calculate the X center of the center line.
-                                    int lineCenterX = (((centerLine[0] - centerLine[2]) / 2) + centerLine[2]) - (screenWidth / 2);
+                                    int lineCenterX = (((centerLine[0] - centerLine[2]) / 2) + centerLine[2]) - (SCREEN_WIDTH / 2);
                                     // Calculate the width of the pipe channel.
                                     int lineCenterY = fabs(((tallestLine1[0] - tallestLine1[2]) / 2) - ((tallestLine2[0] - tallestLine2[2]) / 2));
                                     // If center line is not close to the center of the screen, then don't draw and output zero.
@@ -311,21 +300,21 @@ void VideoProcess::Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &t
                             // Convert image from RGB to HSV.
                             cvtColor(frame, HSVImg, COLOR_BGR2HSV);
                             // Blur the image.
-                            blur(HSVImg, blurImg, Size(greenBlurRadius, greenBlurRadius));
+                            blur(HSVImg, blurImg, Size(GREEN_BLUR_RADIUS, GREEN_BLUR_RADIUS));
                             // Filter out specific color in image.
                             inRange(blurImg, Scalar(trackbarValues[0], trackbarValues[2], trackbarValues[4]), Scalar(trackbarValues[1], trackbarValues[3], trackbarValues[5]), filterImg);
                             // Remove small blobs.
-                            erode(filterImg, dilateImg, kernel);
+                            erode(filterImg, dilateImg, KERNEL);
                             // "Inflate" image.
-                            dilate(dilateImg, dilateImg, kernel);
+                            dilate(dilateImg, dilateImg, KERNEL);
                             
                             // Determine whether we are looking at a vertical or horizontal line.
                             vector<Mat> splitImages;
                             if (screenSplitToggle)
                             {
                                 // Set splitSize for vertical screen.
-                                splitSize = screenHeight / numberOfVerticalSplits;
-                                oppositeScreenRes = screenWidth;
+                                splitSize = SCREEN_HEIGHT / numberOfVerticalSplits;
+                                oppositeScreenRes = SCREEN_WIDTH;
 
                                 // Split image vertically into rectangles.
                                 for (int i = 1; i <= numberOfVerticalSplits; i++)
@@ -339,8 +328,8 @@ void VideoProcess::Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &t
                             else
                             {
                                 // Set splitSize for horizontal screen.
-                                splitSize = screenWidth / numberOfHorizontalSplits;
-                                oppositeScreenRes = screenHeight;
+                                splitSize = SCREEN_WIDTH / numberOfHorizontalSplits;
+                                oppositeScreenRes = SCREEN_HEIGHT;
 
                                 // Split image horizontally into rectangles.
                                 for (int i = 1; i <= numberOfHorizontalSplits; i++)
@@ -455,7 +444,109 @@ void VideoProcess::Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &t
                         *****************************************************/
                         case FISH_TRACKING:
                         {
-                           break;
+                            // Calculate the frame width, length, and max size.
+                            int frameWidth = frame.cols;
+                            int frameHeight = frame.rows;
+                            int maxRes = MAX(frameWidth, frameHeight);
+                            // Make a new square mat with the masRes size.
+                            Mat resized = Mat::zeros(maxRes, maxRes, CV_8UC3);
+                            // Copy the camera image into the new resized mat.
+                            frame.copyTo(resized(Rect(0, 0, frameWidth, frameHeight)));
+                            // resize(frame, frame, Size(DNN_MODEL_IMAGE_SIZE, DNN_MODEL_IMAGE_SIZE));
+                            
+                            // Resize to 640x640, normalize to [0,1] and swap red and blue channels. This creates a 4D blob from the image.
+                            Mat result;
+                            cv::dnn::blobFromImage(frame, result, 1.0 / 255.0, Size(DNN_MODEL_IMAGE_SIZE, DNN_MODEL_IMAGE_SIZE), Scalar(), true, false);
+                            // Set the model's current input image.
+                            onnxModel.setInput(result);
+
+                            // Forward image through model layers and get the resulting predictions. This is the heavy comp shit.
+                            vector<Mat> predictions;
+                            onnxModel.forward(predictions, onnxModel.getUnconnectedOutLayersNames());
+                            // const Mat &outputs = predictions[0];
+                            
+                            // Get image and model width and height ratios.
+                            double widthFactor = double(frameWidth) / DNN_MODEL_IMAGE_SIZE;
+                            double heightFactor = double(frameHeight) / DNN_MODEL_IMAGE_SIZE;
+                            // Get class and detection data from output result.
+                            float *data = (float*)predictions[0].data;
+                            // Create instance variables for storing data while looping through detections.
+                            vector<int> classIDs;
+                            vector<float> confidences;
+                            vector<Rect> predictionBoxes;
+                            // Loop through each prediction. This array has 25,200 positions where each position is upto 85-length 1D array. 
+                            // Each 1D array holds the data of one detection. The 4 first positions of this array are the xywh coordinates 
+                            // of the bound box rectangle. The fifth position is the confidence level of that detection. The 6th up to 85th 
+                            // elements are the scores of each class. For COCO with 80 classes outputs will be shape(n,85) with 
+                            // 85 dimension = (x,y,w,h,object_conf, class0_conf, class1_conf, ...)
+                            // I'm using ++i because it actually avoids a copy every iteration.
+                            for (int i = 0; i < 25200; ++i) {
+                                // Get the current prediction confidence.
+                                float confidence = data[4];
+
+                                // Check if the confidence is above a certain threashold.
+                                if (confidence >= DNN_MINIMUM_CONFIDENCE) {
+                                    // Get just the class scores from the data array. Stupid pointer manipulation
+                                    float *classesScores = data + 5;
+                                    Mat scores(1, classList.size(), CV_32FC1, classesScores);
+
+                                    // Find the class id with the max score for each detection.
+                                    Point classID;
+                                    double maxClassScore = 0;
+                                    minMaxLoc(scores, 0, &maxClassScore, 0, &classID);
+                                    if (maxClassScore > DNN_MINIMUM_CLASS_SCORE) {
+                                        // Add confidence and class ID to vector arrays.
+                                        confidences.push_back(confidence);
+                                        classIDs.push_back(classID.x);
+
+                                        // Get box data for detection.
+                                        float x = data[0];
+                                        float y = data[1];
+                                        float w = data[2];
+                                        float h = data[3];
+                                        // Calculate four corner points.
+                                        int left = int((x - 0.5 * w) * widthFactor);
+                                        int top = int((y - 0.5 * h) * heightFactor);
+                                        int width = int(w * widthFactor);
+                                        int height = int(h * heightFactor);
+                                        // Add CV rect to vector array.
+                                        predictionBoxes.push_back(Rect(left, top, width, height));
+                                    }
+                                }
+
+                                // Completely wrap offset data array by the total length of one row.
+                                data += classList.size() + 5;
+                            }
+
+                            // Remove duplicate detections/average them out.
+                            vector<int> NMSResults;
+                            vector<Detection> finalDetections;
+                            cv::dnn::NMSBoxes(predictionBoxes, confidences, DNN_MINIMUM_CLASS_SCORE, DNN_NMS_THRESH, NMSResults);
+                            for (int i = 0; i < NMSResults.size(); i++) {
+                                int idx = NMSResults[i];
+                                Detection result;
+                                result.classID = classIDs[idx];
+                                result.confidence = confidences[idx];
+                                result.box = predictionBoxes[idx];
+                                finalDetections.push_back(result);
+                            }
+
+                            // Loop through the detections and draw overlay onto final image.
+                            for (Detection detection : finalDetections)
+                            {
+                                // Get detection info.
+                                int classID = detection.classID;
+                                float confidence = detection.confidence;
+                                Rect detectionBox = detection.box;
+                                Scalar color = DETECTION_COLORS[classID % DETECTION_COLORS.size()];
+
+                                // Draw detection
+                                rectangle(finalImg, detectionBox, color, 3);
+                                rectangle(finalImg, Point(detectionBox.x, detectionBox.y - 20), Point(detectionBox.x + detectionBox.width, detectionBox.y), color, FILLED);
+                                putText(finalImg, classList[classID].c_str(), Point(detectionBox.x, detectionBox.y - 5), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0));
+                            }
+
+                            break;
                         }
 
                         /****************************************************
@@ -466,7 +557,7 @@ void VideoProcess::Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &t
                             // Convert image from RGB to HSV.
                             cvtColor(frame, HSVImg, COLOR_BGR2HSV);
                             // Blur the image.
-                            blur(HSVImg, blurImg, Size(greenBlurRadius, greenBlurRadius));
+                            blur(HSVImg, blurImg, Size(GREEN_BLUR_RADIUS, GREEN_BLUR_RADIUS));
 
                             // Loop through the scalar ranges in array and detect the colored tape for each one.
                             map<string, RotatedRect> tapeObjects;
@@ -475,7 +566,7 @@ void VideoProcess::Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &t
                                 // Create individual HSV ranges for each tape color. (blue, yellow, green, purple, red, pink, orange)
                                 inRange(blurImg, colorRange[0], colorRange[1], filterImg);                        
                                 // Remove small blobs.
-                                dilate(filterImg, dilateImg, kernel);
+                                dilate(filterImg, dilateImg, KERNEL);
                                 // Find countours of image.
                                 findContours(dilateImg, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);		////RETR_TREE //// TRY CHAIN_APPROX_SIMPLE		//// Not sure what this method of detection does, but it worked before: CHAIN_APPROX_TC89_KCOS
 

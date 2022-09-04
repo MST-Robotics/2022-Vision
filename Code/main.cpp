@@ -6,6 +6,7 @@
 #include <mutex>
 #include <shared_mutex>
 #include <iostream>
+#include <fstream>
 #include <algorithm>
 #include <vector>
 #include <math.h>
@@ -24,7 +25,7 @@
 #include <networktables/NetworkTableInstance.h>
 #include <vision/VisionPipeline.h>
 #include <vision/VisionRunner.h>
-#include <wpi/StringRef.h>
+#include <wpi/StringExtras.h>
 #include <wpi/json.h>
 #include <wpi/raw_istream.h>
 #include <wpi/raw_ostream.h>
@@ -84,7 +85,7 @@ using namespace rapidjson;
 // Store config file.
 static const char* configFile = "/boot/frc.json";
 static const char* VisionTuningFilePath = "/home/pi/2022-Vision/Code/trackbar_values.json";
-static const char* YoloModelOnnxFilePath = "/home/pi/2022-Vision/YOLO_Models/COCO_v5n_Test/yolov5n.onnx";
+static const string YoloModelOnnxFilePath = "/home/pi/2022-Vision/YOLO_Models/2022-0726/";
 
 // Create namespace variables, stucts, and objects.
 unsigned int team;
@@ -195,7 +196,7 @@ bool ReadConfig()
 	} 
 	catch (const json::parse_error& e) 
 	{
-		ParseError() << "Byte " << e.byte << ": " << e.what() << "\n";
+		ParseError() << "Byte: " << e.what() << "\n";
 		return false;
 	}
 
@@ -223,14 +224,13 @@ bool ReadConfig()
 		try 
 		{
 			auto str = parseFile.at("ntmode").get<string>();
-			wpi::StringRef s(str);
-			if (s.equals_lower("client")) 
+			if (equals_lower(str, "client")) 
 			{
 				server = false;
 			} 
 			else 
 			{
-				if (s.equals_lower("server")) 
+				if (equals_lower(str, "server")) 
 				{
 					server = true;
 				}
@@ -279,9 +279,9 @@ void StartCamera(const CameraConfig& config)
 	cout << "Starting camera '" << config.name << "' on " << config.path << "\n";
 
 	// Create new CameraServer instance and start camera.
-	CameraServer* instance = CameraServer::GetInstance();
+	// CameraServer* instance = CameraServer::GetInstance();
 	UsbCamera camera{config.name, config.path};
-	MjpegServer server = instance->StartAutomaticCapture(camera);
+	MjpegServer server = CameraServer::StartAutomaticCapture(camera);
 
 	// Set camera parameters.
 	camera.SetConfigJson(config.config);
@@ -294,8 +294,8 @@ void StartCamera(const CameraConfig& config)
 	}
 
 	// Store the camera video in a vector. (so we can access it later)
-	CvSink cvSink = instance->GetVideo(config.name);
-	CvSource cvSource = instance->PutVideo(config.name + "Processed", 640, 480);
+	CvSink cvSink = CameraServer::GetVideo(config.name);
+	CvSource cvSource = CameraServer::PutVideo(config.name + "Processed", 640, 480);
 	cameras.emplace_back(camera);
 	cameraSinks.emplace_back(cvSink);
 	cameraSources.emplace_back(cvSource);
@@ -481,7 +481,7 @@ int main(int argc, char* argv[])
 	NetworkTable->PutBoolean("Driving Mode", false);
 	NetworkTable->PutBoolean("Trench Tracking Mode", false);
 	NetworkTable->PutBoolean("Line Tracking Mode", false);
-	NetworkTable->PutBoolean("Fish Tracking Mode", true);
+	NetworkTable->PutBoolean("Fish Tracking Mode", false);
 	NetworkTable->PutBoolean("Tape Tracking Mode", false);
 	NetworkTable->PutBoolean("Take Shapshot", false);
 	NetworkTable->PutBoolean("Enable SolvePNP", false);
@@ -537,24 +537,31 @@ int main(int argc, char* argv[])
 		bool takeShapshot = false;
 		bool enableSolvePNP = false;
 		bool valsSet = false;
-		int trackingMode = VideoProcess::FISH_TRACKING;
-		int selectionState = FISH;
+		int trackingMode = VideoProcess::LINE_TRACKING;
+		int selectionState = LINE;
 		vector<int> trackbarValues {1, 255, 1, 255, 1, 255};
 		vector<double> trackingResults {};
 		vector<double> solvePNPValues {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
+		// Start loading yolo model.
+		cout << "\nAttempting to load DNN model..." << endl;
+		cv::dnn::Net onnxModel = cv::dnn::readNet(string(YoloModelOnnxFilePath + "best.onnx"));
+		cout << "DNN Model is loaded." << endl;
+		// Get class list.
+		vector<string> classList;
+		ifstream ifs(string(YoloModelOnnxFilePath + "classes.txt"));
+		string line;
+		while (getline(ifs, line))
+		{
+			classList.push_back(line);
+		}
+		cout << "DNN class list loaded successfully." << endl;
+
 		// Start classes multi-threading.
 		thread VideoGetThread(&VideoGet::StartCapture, &VideoGetter, ref(frame), ref(cameraSourceIndex), ref(drivingMode), ref(cameraSinks), ref(MutexGet));
-		thread VideoProcessThread(&VideoProcess::Process, &VideoProcessor, ref(frame), ref(finalImg), ref(targetCenterX), ref(targetCenterY), ref(centerLineTolerance), ref(contourAreaMinLimit), ref(contourAreaMaxLimit), ref(tuningMode), ref(drivingMode), ref(trackingMode), ref(takeShapshot), ref(enableSolvePNP), ref(trackbarValues), ref(trackingResults), ref(solvePNPValues), ref(VideoGetter), ref(MutexGet), ref(MutexShow));
+		thread VideoProcessThread(&VideoProcess::Process, &VideoProcessor, ref(frame), ref(finalImg), ref(targetCenterX), ref(targetCenterY), ref(centerLineTolerance), ref(contourAreaMinLimit), ref(contourAreaMaxLimit), ref(tuningMode), ref(drivingMode), ref(trackingMode), ref(takeShapshot), ref(enableSolvePNP), ref(trackbarValues), ref(trackingResults), ref(solvePNPValues), ref(classList), ref(onnxModel), ref(VideoGetter), ref(MutexGet), ref(MutexShow));
 		thread VideoShowerThread(&VideoShow::ShowFrame, &VideoShower, ref(finalImg), ref(cameraSources), ref(MutexShow));
 		
-		// Start temporary thread for loading yolo model.
-		// future<dnn::Net> onnxModel = async(dnn::readNet, YoloModelOnnxFilePath);
-		// cout << "Net Is Valid: " << onnxModel.valid() << endl;
-		cout << "Attempting to load model..." << endl;
-		auto net = dnn::readNetFromONNX(YoloModelOnnxFilePath);
-		cout << "Model is loaded." << endl;
-
 		while (1)
 		{
 			try

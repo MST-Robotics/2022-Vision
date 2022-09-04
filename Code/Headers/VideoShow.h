@@ -23,11 +23,9 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/opencv.hpp>
-#include <opencv/cv.hpp>
 #include <networktables/NetworkTableInstance.h>
 #include <vision/VisionPipeline.h>
 #include <vision/VisionRunner.h>
-#include <wpi/StringRef.h>
 #include <wpi/json.h>
 #include <wpi/raw_istream.h>
 #include <wpi/raw_ostream.h>

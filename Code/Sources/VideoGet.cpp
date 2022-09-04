@@ -31,9 +31,9 @@ VideoGet::VideoGet()
     if (USE_VIRTUAL_CAM)
     {
         cap = VideoCapture();
-        cap.set(CV_CAP_PROP_FRAME_WIDTH, 640);
-        cap.set(CV_CAP_PROP_FRAME_HEIGHT, 480);
-        cap.set(CV_CAP_PROP_FPS, 30);
+        cap.set(CAP_PROP_FRAME_WIDTH, 640);
+        cap.set(CAP_PROP_FRAME_HEIGHT, 480);
+        cap.set(CAP_PROP_FPS, 30);
         cap.open(0);
     }
 }
@@ -92,12 +92,12 @@ void VideoGet::StartCapture(Mat &frame, bool &cameraSourceIndex, bool &drivingMo
                 if (cameraSourceIndex)
                 {
                     // Get camera frame.
-                    cameraSinks[1].GrabFrame(frame);
+                    int success = cameraSinks[1].GrabFrame(frame);
                 }
                 else
                 {
                     // Get camera frame.
-                    cameraSinks[0].GrabFrame(frame);
+                    int success = cameraSinks[0].GrabFrame(frame);
                 }
             }
         }
