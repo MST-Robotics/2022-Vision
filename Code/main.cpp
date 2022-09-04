@@ -85,7 +85,7 @@ using namespace rapidjson;
 // Store config file.
 static const char* configFile = "/boot/frc.json";
 static const char* VisionTuningFilePath = "/home/pi/2022-Vision/Code/trackbar_values.json";
-static const string YoloModelOnnxFilePath = "/home/pi/2022-Vision/YOLO_Models/2022-0726/";
+static const string YoloModelOnnxFilePath = "/home/pi/2022-Vision/YOLO_Models/COCO_v5n_Test/";
 
 // Create namespace variables, stucts, and objects.
 unsigned int team;
