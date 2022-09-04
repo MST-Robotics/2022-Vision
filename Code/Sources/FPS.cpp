@@ -64,12 +64,8 @@ int FPS::FramesPerSec()
     time_t timeNow = time(0) - startTime;
 
     // Calculate FPS.
-    if (timeNow - tick >= 1)
-    {
-        tick++;
-        FPSCount = iterations;
-        iterations = 0;
-    }
+    tick++;
+    FPSCount = iterations / double(timeNow);
 
     // Return FPS value.
     return FPSCount;

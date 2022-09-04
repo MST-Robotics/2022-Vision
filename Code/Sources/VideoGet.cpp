@@ -57,11 +57,11 @@ VideoGet::~VideoGet()
 /****************************************************************************
         Description:	Grabs frames from camera.
 
-        Arguments: 		MAT&, SHARED_TIMED_MUTEX&
+        Arguments: 		MAT&, MAT&, MAT&, BOOL&, BOOL&, BOOL&, VECTOR<CvSink>, SHARED_TIMED_MUTEX&
 
         Returns: 		Nothing
 ****************************************************************************/
-void VideoGet::StartCapture(Mat &frame, bool &cameraSourceIndex, bool &drivingMode, vector<CvSink> &cameraSinks, shared_timed_mutex &Mutex)
+void VideoGet::StartCapture(Mat &visionFrame, Mat &leftStereoFrame, Mat &rightStereoFrame, bool &cameraSourceIndex, bool &drivingMode, vector<CvSink> &cameraSinks, shared_timed_mutex &Mutex)
 {
     // Continuously grab camera frames.
     while (1)
@@ -78,7 +78,7 @@ void VideoGet::StartCapture(Mat &frame, bool &cameraSourceIndex, bool &drivingMo
             if (USE_VIRTUAL_CAM)
             {
                 // Read frame from video file.
-                cap >> frame;
+                cap >> visionFrame;
             }
             else
             {
@@ -88,16 +88,41 @@ void VideoGet::StartCapture(Mat &frame, bool &cameraSourceIndex, bool &drivingMo
                     break;
                 }
 
-                // Grab frame from either camera1 or camera2.
-                if (cameraSourceIndex)
+                cameraSinks[1].GrabFrame(rightStereoFrame);
+                // Loop through all connected cameras and store frames for the ones we want.
+                for (int i = 0; i < cameraSinks.size(); i++)
                 {
-                    // Get camera frame.
-                    int success = cameraSinks[1].GrabFrame(frame);
-                }
-                else
-                {
-                    // Get camera frame.
-                    int success = cameraSinks[0].GrabFrame(frame);
+                    // If this camera has the correct alias for vision, use it as our vision camera.
+                    if (cameraSinks[i].GetName().find(VISION_DASHBOARD_ALIAS) != string::npos)
+                    {
+                        // Grab camera frame for vision.
+                        cameraSinks[i].GrabFrame(visionFrame);
+
+                        // Check if this camera will also be used for left stereo vision.
+                        if (cameraSinks[i].GetName().find(LEFT_STEREO_DASHBOARD_ALIAS) != string::npos)
+                        {
+                            // Stored already grabbed frame into left frame.
+                            leftStereoFrame = visionFrame.clone();
+                        }
+                        // Check if this camera will also be used for right stereo vision.
+                        else if (cameraSinks[i].GetName().find(RIGHT_STEREO_DASHBOARD_ALIAS) != string::npos)
+                        {
+                            // Stored already grabbed frame into left frame.
+                            rightStereoFrame = visionFrame.clone();
+                        }
+                    }
+                    // If camera won't be used for vision or vision and stereo, then check for just left stereo.
+                    else if (cameraSinks[i].GetName().find(LEFT_STEREO_DASHBOARD_ALIAS) != string::npos)
+                    {
+                        // Grab camera frame for left stereo image.
+                        cameraSinks[i].GrabFrame(leftStereoFrame);
+                    }
+                    // If camera won't be used for vision or vision and stereo, then check for just right stereo.
+                    else if (cameraSinks[i].GetName().find(RIGHT_STEREO_DASHBOARD_ALIAS) != string::npos)
+                    {
+                        // Grab camera frame for left stereo image.
+                        cameraSinks[i].GrabFrame(rightStereoFrame);
+                    }
                 }
             }
         }

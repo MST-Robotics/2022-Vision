@@ -689,16 +689,15 @@ void VideoProcess::Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &t
 }
 
 /****************************************************************************
-        Description:	Turn negative numbers into -1, positive numbers 
-                        into 1, and returns 0 when 0.
+        Description:	Processes two frames and finds the disparity map between them for depth estimation.
 
-        Arguments: 		DOUBLE
+        Arguments: MAT&, MAT&, SHARED_TIMED_MUTEX&, SHARED_TIMED_MUTEX&
 
-        Returns: 		INT
+        Returns: 		Nothing
 ****************************************************************************/
-int VideoProcess::SignNum(double val)
+void VideoProcess::StereoProcess(Mat &leftFrame, Mat &rightFrame, shared_timed_mutex &MutexGet, shared_timed_mutex &MutexShow)
 {
-    return (double(0) < val) - (val < double(0));
+
 }
 
 /****************************************************************************
@@ -840,6 +839,20 @@ vector<double> VideoProcess::SolveObjectPose(vector<Point2f> imagePoints, Mat &f
     // Return useless stuff for now.
     return objectPosition;
 }
+
+/****************************************************************************
+        Description:	Turn negative numbers into -1, positive numbers 
+                        into 1, and returns 0 when 0.
+
+        Arguments: 		DOUBLE
+
+        Returns: 		INT
+****************************************************************************/
+int VideoProcess::SignNum(double val)
+{
+    return (double(0) < val) - (val < double(0));
+}
+
 
 /****************************************************************************
         Description:	Signals the thread to stop.

@@ -516,7 +516,10 @@ int main(int argc, char* argv[])
 		VideoShow VideoShower;
 
 		// Preallocate image objects.
-		Mat	frame(480, 640, CV_8U, 1);
+		Mat	visionFrame(480, 640, CV_8U, 1);
+		Mat leftStereoFrame(480, 640, CV_8U, 1);
+		Mat rightStereoFrame(480, 640, CV_8U, 1);
+		Mat stereoImg(480, 640, CV_8U, 1);
 		Mat finalImg(480, 640, CV_8U, 1);
 
 		// Create a global instance of mutex to protect it.
@@ -558,9 +561,10 @@ int main(int argc, char* argv[])
 		cout << "DNN class list loaded successfully." << endl;
 
 		// Start classes multi-threading.
-		thread VideoGetThread(&VideoGet::StartCapture, &VideoGetter, ref(frame), ref(cameraSourceIndex), ref(drivingMode), ref(cameraSinks), ref(MutexGet));
-		thread VideoProcessThread(&VideoProcess::Process, &VideoProcessor, ref(frame), ref(finalImg), ref(targetCenterX), ref(targetCenterY), ref(centerLineTolerance), ref(contourAreaMinLimit), ref(contourAreaMaxLimit), ref(tuningMode), ref(drivingMode), ref(trackingMode), ref(takeShapshot), ref(enableSolvePNP), ref(trackbarValues), ref(trackingResults), ref(solvePNPValues), ref(classList), ref(onnxModel), ref(VideoGetter), ref(MutexGet), ref(MutexShow));
-		thread VideoShowerThread(&VideoShow::ShowFrame, &VideoShower, ref(finalImg), ref(cameraSources), ref(MutexShow));
+		thread VideoGetThread(&VideoGet::StartCapture, &VideoGetter, ref(visionFrame), ref(leftStereoFrame), ref(rightStereoFrame), ref(cameraSourceIndex), ref(drivingMode), ref(cameraSinks), ref(MutexGet));
+		thread VideoProcessThread(&VideoProcess::Process, &VideoProcessor, ref(visionFrame), ref(finalImg), ref(targetCenterX), ref(targetCenterY), ref(centerLineTolerance), ref(contourAreaMinLimit), ref(contourAreaMaxLimit), ref(tuningMode), ref(drivingMode), ref(trackingMode), ref(takeShapshot), ref(enableSolvePNP), ref(trackbarValues), ref(trackingResults), ref(solvePNPValues), ref(classList), ref(onnxModel), ref(VideoGetter), ref(MutexGet), ref(MutexShow));
+		// thread VideoStereoProcessThread(&VideoProcess:StereoProcess, )
+		thread VideoShowerThread(&VideoShow::ShowFrame, &VideoShower, ref(finalImg), ref(stereoImg), ref(cameraSources), ref(MutexShow));
 		
 		while (1)
 		{

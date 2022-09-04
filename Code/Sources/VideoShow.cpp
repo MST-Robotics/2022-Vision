@@ -47,11 +47,11 @@ VideoShow::~VideoShow()
 /****************************************************************************
         Description:	Method that gives the processed frame to CameraServer.
 
-        Arguments: 		MAT&, VECTOR<CVSOURCE>&, SHARED_TIMED_MUTEX&
+        Arguments: 		MAT&, MAT&, VECTOR<CVSOURCE>&, SHARED_TIMED_MUTEX&
 
         Returns: 		Nothing
 ****************************************************************************/
-void VideoShow::ShowFrame(Mat &frame, vector<CvSource> &cameraSources, shared_timed_mutex &Mutex)
+void VideoShow::ShowFrame(Mat &finalImg, Mat &stereoImg, vector<CvSource> &cameraSources, shared_timed_mutex &Mutex)
 {
     // Give other threads some time.
     this_thread::sleep_for(std::chrono::milliseconds(1000));
@@ -65,20 +65,27 @@ void VideoShow::ShowFrame(Mat &frame, vector<CvSource> &cameraSources, shared_ti
         try
         {
             // Slow thread down to save bandwidth.
-            this_thread::sleep_for(std::chrono::milliseconds(25));
+            this_thread::sleep_for(std::chrono::milliseconds(20));
 
             // Acquire resource lock for thread.
             shared_lock<shared_timed_mutex> guard(Mutex);
 
-            if (!frame.empty())
+            // Check if frame is empty, and then add it to the streams.
+            if (!finalImg.empty())
             {
                 // Output frame to camera stream.
-                cameraSources[0].PutFrame(frame);
+                cameraSources[0].PutFrame(finalImg);
             }
             else
             {
                 // Print that frame is empty.
-                cout << "WARNING: Frame is empty!" << endl;
+                cout << "WARNING: Processsed vision frame is empty!" << endl;
+            }
+            // Check if frame is empty, and then add it to the streams.
+            if (!stereoImg.empty())
+            {
+                // Output frame to camera stream.
+                cameraSources[0].PutFrame(stereoImg);
             }
         }
         catch (const exception& e)

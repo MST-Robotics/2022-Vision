@@ -32,6 +32,9 @@ using namespace cs;
 
 // Define constants.
 const bool USE_VIRTUAL_CAM = false;
+const string VISION_DASHBOARD_ALIAS = "vision";
+const string LEFT_STEREO_DASHBOARD_ALIAS = "left_stereo";
+const string RIGHT_STEREO_DASHBOARD_ALIAS = "right_stereo";
 ///////////////////////////////////////////////////////////////////////////////
 
 class VideoGet
@@ -40,7 +43,7 @@ public:
     // Declare class methods.
     VideoGet();
     ~VideoGet();
-    void StartCapture(Mat &frame, bool &cameraSourceIndex, bool &drivingMode, vector<CvSink> &cameraSinks, shared_timed_mutex &Mutex);
+    void StartCapture(Mat &frame, Mat &leftStereoFrame, Mat &rightStereoFrame, bool &cameraSourceIndex, bool &drivingMode, vector<CvSink> &cameraSinks, shared_timed_mutex &Mutex);
     void SetIsStopping(bool isStopping);
     bool GetIsStopped();
     int GetFPS();
