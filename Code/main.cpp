@@ -874,7 +874,7 @@ int main(int argc, char* argv[])
 					this_thread::sleep_for(std::chrono::milliseconds(20));
 
 					// Print debug info.
-					//cout << "Getter FPS: " << VideoGetter.GetFPS() << "\n";
+					//cout << "Getter FPS: " << VideoGetter.GetFPS(1) << "\n";
 					//cout << "Processor FPS: " << VideoProcessor.GetFPS() << "\n";
 					//cout << "Shower FPS: " << VideoShower.GetFPS() << "\n";
 				}

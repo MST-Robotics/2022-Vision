@@ -35,6 +35,7 @@ const bool USE_VIRTUAL_CAM = false;
 const string VISION_DASHBOARD_ALIAS = "vision";
 const string LEFT_STEREO_DASHBOARD_ALIAS = "left_stereo";
 const string RIGHT_STEREO_DASHBOARD_ALIAS = "right_stereo";
+const int FRAME_GET_TIMEOUT = 1.0;
 ///////////////////////////////////////////////////////////////////////////////
 
 class VideoGet
@@ -43,19 +44,24 @@ public:
     // Declare class methods.
     VideoGet();
     ~VideoGet();
-    void StartCapture(Mat &frame, Mat &leftStereoFrame, Mat &rightStereoFrame, bool &cameraSourceIndex, bool &drivingMode, vector<CvSink> &cameraSinks, shared_timed_mutex &Mutex);
+    void StartCapture(Mat &visionFrame, Mat &leftStereoFrame, Mat &rightStereoFrame, bool &cameraSourceIndex, bool &drivingMode, vector<CvSink> &cameraSinks, shared_timed_mutex &Mutex);
     void SetIsStopping(bool isStopping);
     bool GetIsStopped();
-    int GetFPS();
+    int GetFPS(const int index);
 
 private:
+    // Declare private class methods.
+    void GetCameraFrames(CvSink &camera, Mat &mainFrame, FPS &fpsCounter, bool &stop, shared_timed_mutex &Mutex);
+
     // Declare class objects and variables.
     FPS*					FPSCounter;
     VideoCapture			cap;
     
     int						FPSCount;
+    bool                    camerasStarted;
     bool					isStopping;
     bool					isStopped;
+    vector<FPS>             fpsCounters;
 };
 ///////////////////////////////////////////////////////////////////////////////
 #endif

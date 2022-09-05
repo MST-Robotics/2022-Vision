@@ -23,7 +23,6 @@ FPS::FPS()
     // Initialize member variables.
     iterations = 0;
     startTime = time(0);
-    tick = 0;
     FPSCount = 0;
 }
 
@@ -64,7 +63,6 @@ int FPS::FramesPerSec()
     time_t timeNow = time(0) - startTime;
 
     // Calculate FPS.
-    tick++;
     FPSCount = iterations / double(timeNow);
 
     // Return FPS value.

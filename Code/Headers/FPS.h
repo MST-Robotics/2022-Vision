@@ -27,7 +27,6 @@ private:
     // Declare class variables.
 	time_t					startTime;
 	int						iterations;
-	int						tick;
 	int						FPSCount;
 };
 ///////////////////////////////////////////////////////////////////////////////

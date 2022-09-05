@@ -658,7 +658,7 @@ void VideoProcess::Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &t
 
                 // Put FPS on image.
                 FPSCount = FPSCounter->FramesPerSec();
-                putText(finalImg, ("Camera FPS: " + to_string(VideoGetter.GetFPS())), Point(420, finalImg.rows - 40), FONT_HERSHEY_DUPLEX, 0.65, Scalar(200, 200, 200), 1);
+                putText(finalImg, ("Camera FPS: " + to_string(VideoGetter.GetFPS(0))), Point(420, finalImg.rows - 40), FONT_HERSHEY_DUPLEX, 0.65, Scalar(200, 200, 200), 1);
                 putText(finalImg, ("Algorithm FPS: " + to_string(FPSCount)), Point(420, finalImg.rows - 20), FONT_HERSHEY_DUPLEX, 0.65, Scalar(200, 200, 200), 1);
 
                 // If tuning mode is enabled, then output contrast or brightness images.

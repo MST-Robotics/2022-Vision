@@ -21,11 +21,12 @@
 VideoGet::VideoGet()
 {
     // Create objects.
-    FPSCounter									= new FPS();
 
     // Initialize Variables.
-    isStopping							= false;
-    isStopped							= false;
+    camerasStarted                              = false;
+    isStopping							        = false;
+    isStopped							        = false;
+    fpsCounters                                 = vector<FPS>(10);
 
     // Create VideoCapture object for reading video from virtual cam if enabled.
     if (USE_VIRTUAL_CAM)
@@ -47,11 +48,7 @@ VideoGet::VideoGet()
 ****************************************************************************/
 VideoGet::~VideoGet()
 {
-    // Delete object pointers.
-    delete FPSCounter;
-
-    // Set object pointers as nullptrs.
-    FPSCounter				 = nullptr;
+    // Nothing to do for now.
 }
 
 /****************************************************************************
@@ -63,16 +60,18 @@ VideoGet::~VideoGet()
 ****************************************************************************/
 void VideoGet::StartCapture(Mat &visionFrame, Mat &leftStereoFrame, Mat &rightStereoFrame, bool &cameraSourceIndex, bool &drivingMode, vector<CvSink> &cameraSinks, shared_timed_mutex &Mutex)
 {
+    // Create empty mat as a placeholder for thread params.
+    Mat	emptyImg = Mat();
+    // Create a vector for storing created threads.
+    vector<thread*> frameThreads;
+
     // Continuously grab camera frames.
     while (1)
     {
-        // Increment FPS counter.
-        FPSCounter->Increment();
-
         try
         {
             // Acquire resource lock for thread.
-            lock_guard<shared_timed_mutex> guard(Mutex);		// unique_lock
+            // lock_guard<shared_timed_mutex> guard(Mutex);		// unique_lock
 
             // Check if we are using virtual camera.
             if (USE_VIRTUAL_CAM)
@@ -88,41 +87,51 @@ void VideoGet::StartCapture(Mat &visionFrame, Mat &leftStereoFrame, Mat &rightSt
                     break;
                 }
 
-                cameraSinks[1].GrabFrame(rightStereoFrame);
-                // Loop through all connected cameras and store frames for the ones we want.
-                for (int i = 0; i < cameraSinks.size(); i++)
+                // Check if we already started cameras.
+                if (!camerasStarted)
                 {
-                    // If this camera has the correct alias for vision, use it as our vision camera.
-                    if (cameraSinks[i].GetName().find(VISION_DASHBOARD_ALIAS) != string::npos)
+                    // Loop through all connected cameras and store frames for the ones we want.
+                    for (int i = 0; i < cameraSinks.size(); i++)
                     {
-                        // Grab camera frame for vision.
-                        cameraSinks[i].GrabFrame(visionFrame);
-
-                        // Check if this camera will also be used for left stereo vision.
-                        if (cameraSinks[i].GetName().find(LEFT_STEREO_DASHBOARD_ALIAS) != string::npos)
+                        // If this camera has the correct alias for vision, use it as our vision camera.
+                        if (cameraSinks[i].GetName().find(VISION_DASHBOARD_ALIAS) != string::npos)
                         {
-                            // Stored already grabbed frame into left frame.
-                            leftStereoFrame = visionFrame.clone();
+                            // Check if this camera will also be used for left stereo vision.
+                            if (cameraSinks[i].GetName().find(LEFT_STEREO_DASHBOARD_ALIAS) != string::npos)
+                            {
+                                // Grab camera frame for vision and left stereo.
+                                frameThreads.emplace_back(new thread(&VideoGet::GetCameraFrames, this, ref(cameraSinks[i]), ref(visionFrame), ref(fpsCounters.at(0)), ref(isStopped), ref(Mutex)));
+                                frameThreads.emplace_back(new thread(&VideoGet::GetCameraFrames, this, ref(cameraSinks[i]), ref(leftStereoFrame), ref(fpsCounters.at(1)), ref(isStopped), ref(Mutex)));
+                            }
+                            // Check if this camera will also be used for right stereo vision.
+                            else if (cameraSinks[i].GetName().find(RIGHT_STEREO_DASHBOARD_ALIAS) != string::npos)
+                            {
+                                // Grab camera frame for vision.
+                                frameThreads.emplace_back(new thread(&VideoGet::GetCameraFrames, this, ref(cameraSinks[i]), ref(visionFrame), ref(fpsCounters.at(0)), ref(isStopped), ref(Mutex)));
+                                frameThreads.emplace_back(new thread(&VideoGet::GetCameraFrames, this, ref(cameraSinks[i]), ref(rightStereoFrame), ref(fpsCounters.at(2)), ref(isStopped), ref(Mutex)));
+                            }
+                            else
+                            {
+                                // Grab camera frame for vision.
+                                frameThreads.emplace_back(new thread(&VideoGet::GetCameraFrames, this, ref(cameraSinks[i]), ref(visionFrame), ref(fpsCounters.at(0)), ref(isStopped), ref(Mutex)));
+                            }
                         }
-                        // Check if this camera will also be used for right stereo vision.
+                        // If camera won't be used for vision or vision and stereo, then check for just left stereo.
+                        else if (cameraSinks[i].GetName().find(LEFT_STEREO_DASHBOARD_ALIAS) != string::npos)
+                        {
+                            // Grab camera frame for vision.
+                            frameThreads.emplace_back(new thread(&VideoGet::GetCameraFrames, this, ref(cameraSinks[i]), ref(leftStereoFrame), ref(fpsCounters.at(1)), ref(isStopped), ref(Mutex)));
+                        }
+                        // If camera won't be used for vision or vision and stereo, then check for just right stereo.
                         else if (cameraSinks[i].GetName().find(RIGHT_STEREO_DASHBOARD_ALIAS) != string::npos)
                         {
-                            // Stored already grabbed frame into left frame.
-                            rightStereoFrame = visionFrame.clone();
+                            // Grab camera frame for vision.
+                            frameThreads.emplace_back(new thread(&VideoGet::GetCameraFrames, this, ref(cameraSinks[i]), ref(rightStereoFrame), ref(fpsCounters.at(2)), ref(isStopped), ref(Mutex)));
                         }
                     }
-                    // If camera won't be used for vision or vision and stereo, then check for just left stereo.
-                    else if (cameraSinks[i].GetName().find(LEFT_STEREO_DASHBOARD_ALIAS) != string::npos)
-                    {
-                        // Grab camera frame for left stereo image.
-                        cameraSinks[i].GrabFrame(leftStereoFrame);
-                    }
-                    // If camera won't be used for vision or vision and stereo, then check for just right stereo.
-                    else if (cameraSinks[i].GetName().find(RIGHT_STEREO_DASHBOARD_ALIAS) != string::npos)
-                    {
-                        // Grab camera frame for left stereo image.
-                        cameraSinks[i].GrabFrame(rightStereoFrame);
-                    }
+
+                    // Set toggle.
+                    camerasStarted = true;
                 }
             }
         }
@@ -132,19 +141,53 @@ void VideoGet::StartCapture(Mat &visionFrame, Mat &leftStereoFrame, Mat &rightSt
             cout << "WARNING: Video data empty or camera not present." << "\n" << e.what() << endl;
         }
 
-        // Calculate FPS.
-        FPSCount = FPSCounter->FramesPerSec();
-
         // If the program stops shutdown the thread.
         if (isStopping)
         {
             break;
         }
+
+        this_thread::sleep_for(std::chrono::milliseconds(25));
     }
 
     // Clean-up.
     isStopped = true;
-    return;
+    // Loop through the threads in the threads vector and join them.
+    for (thread* task : frameThreads)
+    {
+        // Join.
+        task->join();
+
+        // Delete dynamically allocated object.
+        delete task;
+        // Set old pointer to null.
+        task = nullptr;
+    }
+}
+
+/****************************************************************************
+        Description:	This is a container method for a thread and never exits.
+                        It continuously gets new camera frames and stores them in
+                        given mat.
+
+        Arguments: 		CvSink&, VECTOR&, FPS&, BOOL&
+
+        Returns: 		Nothing
+****************************************************************************/
+void VideoGet::GetCameraFrames(CvSink &camera, Mat &mainFrame, FPS &fpsCounter, bool &stop, shared_timed_mutex &Mutex)
+{
+    // Loop forever.
+    while (!stop)
+    {
+        // Acquire resource lock for thread.
+        // lock_guard<shared_timed_mutex> guard(Mutex);
+
+        // Get camera frame.
+        int retTime = camera.GrabFrame(mainFrame, FRAME_GET_TIMEOUT);
+
+        // Increment FPS counter.
+        fpsCounter.Increment();
+    }
 }
 
 /****************************************************************************
@@ -172,14 +215,14 @@ bool VideoGet::GetIsStopped()
 }
 
 /****************************************************************************
-        Description:	Gets the current FPS of the thread.
+        Description:	Gets the current FPS of the indexed thread.
 
-        Arguments: 		None
+        Arguments: 		INT
 
         Returns: 		Int
 ****************************************************************************/
-int VideoGet::GetFPS()
+int VideoGet::GetFPS(const int index)
 {
-    return FPSCount;
+    return fpsCounters.at(index).FramesPerSec();
 }
 ///////////////////////////////////////////////////////////////////////////////

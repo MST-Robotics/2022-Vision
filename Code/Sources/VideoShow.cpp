@@ -65,7 +65,7 @@ void VideoShow::ShowFrame(Mat &finalImg, Mat &stereoImg, vector<CvSource> &camer
         try
         {
             // Slow thread down to save bandwidth.
-            this_thread::sleep_for(std::chrono::milliseconds(20));
+            this_thread::sleep_for(std::chrono::milliseconds(25));
 
             // Acquire resource lock for thread.
             shared_lock<shared_timed_mutex> guard(Mutex);
@@ -85,7 +85,7 @@ void VideoShow::ShowFrame(Mat &finalImg, Mat &stereoImg, vector<CvSource> &camer
             if (!stereoImg.empty())
             {
                 // Output frame to camera stream.
-                cameraSources[0].PutFrame(stereoImg);
+                cameraSources[1].PutFrame(stereoImg);
             }
         }
         catch (const exception& e)
