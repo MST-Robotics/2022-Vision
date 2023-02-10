@@ -45,7 +45,7 @@ public:
     // Define class methods.
     VideoShow();
     ~VideoShow();
-    void ShowFrame(Mat &finalImg, Mat &stereoImg, vector<CvSource> &cameraSources, shared_timed_mutex &Mutex);
+    void ShowFrame(Mat &finalImg, Mat &stereoImg, vector<CvSource> &cameraSources, shared_timed_mutex &VisionMutex, shared_timed_mutex &StereoMutex);
     void SetIsStopping(bool isStopping);
     bool GetIsStopped();
     int GetFPS();

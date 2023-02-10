@@ -47,11 +47,11 @@ VideoShow::~VideoShow()
 /****************************************************************************
         Description:	Method that gives the processed frame to CameraServer.
 
-        Arguments: 		MAT&, MAT&, VECTOR<CVSOURCE>&, SHARED_TIMED_MUTEX&
+        Arguments: 		MAT&, MAT&, VECTOR<CVSOURCE>&, SHARED_TIMED_MUTEX&, SHARED_TIMED_MUTEX&
 
         Returns: 		Nothing
 ****************************************************************************/
-void VideoShow::ShowFrame(Mat &finalImg, Mat &stereoImg, vector<CvSource> &cameraSources, shared_timed_mutex &Mutex)
+void VideoShow::ShowFrame(Mat &finalImg, Mat &stereoImg, vector<CvSource> &cameraSources, shared_timed_mutex &VisionMutex, shared_timed_mutex &StereoMutex)
 {
     // Give other threads some time.
     this_thread::sleep_for(std::chrono::milliseconds(1000));

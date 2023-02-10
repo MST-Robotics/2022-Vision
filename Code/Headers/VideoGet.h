@@ -44,7 +44,7 @@ public:
     // Declare class methods.
     VideoGet();
     ~VideoGet();
-    void StartCapture(Mat &visionFrame, Mat &leftStereoFrame, Mat &rightStereoFrame, bool &cameraSourceIndex, bool &drivingMode, vector<CvSink> &cameraSinks, shared_timed_mutex &Mutex);
+    void StartCapture(Mat &visionFrame, Mat &leftStereoFrame, Mat &rightStereoFrame, bool &cameraSourceIndex, bool &drivingMode, vector<CvSink> &cameraSinks, shared_timed_mutex &VisionMutex, shared_timed_mutex &StereoMutex);
     void SetIsStopping(bool isStopping);
     bool GetIsStopped();
     int GetFPS(const int index);

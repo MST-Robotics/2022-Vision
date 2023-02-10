@@ -49,6 +49,20 @@ void FPS::Increment()
 {
 	// Increment Counter.
 	iterations++;
+	
+	// Get seconds since start time.
+	time_t timeNow = time(0) - startTime;
+	// Calculate FPS if 1 second has passed.
+	if (int(timeNow) >= 1)
+	{
+		// Store current number of iterations.
+		FPSCount = iterations;
+
+		// Reset Counter.
+		iterations = 0;
+		// Reset start time.
+		startTime = time(0);
+	}
 }
 
 /****************************************************************************
@@ -60,12 +74,6 @@ void FPS::Increment()
 ****************************************************************************/
 int FPS::FramesPerSec()
 {
-    // Create instance variables.
-    time_t timeNow = time(0) - startTime;
-
-    // Calculate FPS.
-    FPSCount = iterations / double(timeNow);
-
     // Return FPS value.
     return FPSCount;
 }

@@ -74,7 +74,7 @@ public:
     VideoProcess();
     ~VideoProcess();
     void Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &targetCenterY, int &centerLineTolerance, double &contourAreaMinLimit, double &contourAreaMaxLimit, bool &tuningMode, bool &drivingMode, int &trackingMode, bool &takeShapshot, bool &solvePNPEnabled, vector<int> &trackbarValues, vector<double> &trackingResults, vector<double> &solvePNPValues, vector<string> &classList, cv::dnn::Net &onnxModel, VideoGet &VideoGetter, shared_timed_mutex &MutexGet, shared_timed_mutex &MutexShow);
-    void StereoProcess(Mat &leftFrame, Mat &rightFrame, shared_timed_mutex &MutexGet, shared_timed_mutex &MutexShow);
+    void StereoProcess(Mat &leftFrame, Mat &rightFrame, Mat &stereoImg, bool &enableStereoVision, shared_timed_mutex &MutexGet, shared_timed_mutex &MutexShow);
     vector<double> SolveObjectPose(vector<Point2f> imagePoints, Mat &finalImg, Mat &frame, int targetPositionX, int targetPositionY);
     int SignNum(double val);
     void SetIsStopping(bool isStopping);
@@ -106,7 +106,7 @@ private:
     vector<vector<Point>>		contours;
     vector<Vec4i>				hierarchy;
     vector<vector<Scalar>>      colorRanges;
-    vector<string>                 colors;
+    vector<string>              colors;
     FPS*						FPSCounter;
 
     // Declare class variables.

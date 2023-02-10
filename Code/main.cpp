@@ -485,6 +485,7 @@ int main(int argc, char* argv[])
 	NetworkTable->PutBoolean("Tape Tracking Mode", false);
 	NetworkTable->PutBoolean("Take Shapshot", false);
 	NetworkTable->PutBoolean("Enable SolvePNP", false);
+	NetworkTable->PutBoolean("Enable StereoVision", false);
 	NetworkTable->PutNumber("X Setpoint Offset", 0);
 	NetworkTable->PutNumber("Contour Area Min Limit", 1211);
 	NetworkTable->PutNumber("Contour Area Max Limit", 2000);
@@ -523,8 +524,10 @@ int main(int argc, char* argv[])
 		Mat finalImg(480, 640, CV_8U, 1);
 
 		// Create a global instance of mutex to protect it.
-		shared_timed_mutex MutexGet;
-		shared_timed_mutex MutexShow;
+		shared_timed_mutex VisionMutexGet;
+		shared_timed_mutex VisionMutexShow;
+		shared_timed_mutex StereoMutexGet;
+		shared_timed_mutex StereoMutexShow;
 
 		// Vision options and values.
 		int targetCenterX = 0;
@@ -539,6 +542,7 @@ int main(int argc, char* argv[])
 		bool drivingMode = false;
 		bool takeShapshot = false;
 		bool enableSolvePNP = false;
+		bool enableStereoVision = false;
 		bool valsSet = false;
 		int trackingMode = VideoProcess::LINE_TRACKING;
 		int selectionState = LINE;
@@ -561,10 +565,10 @@ int main(int argc, char* argv[])
 		cout << "DNN class list loaded successfully." << endl;
 
 		// Start classes multi-threading.
-		thread VideoGetThread(&VideoGet::StartCapture, &VideoGetter, ref(visionFrame), ref(leftStereoFrame), ref(rightStereoFrame), ref(cameraSourceIndex), ref(drivingMode), ref(cameraSinks), ref(MutexGet));
-		thread VideoProcessThread(&VideoProcess::Process, &VideoProcessor, ref(visionFrame), ref(finalImg), ref(targetCenterX), ref(targetCenterY), ref(centerLineTolerance), ref(contourAreaMinLimit), ref(contourAreaMaxLimit), ref(tuningMode), ref(drivingMode), ref(trackingMode), ref(takeShapshot), ref(enableSolvePNP), ref(trackbarValues), ref(trackingResults), ref(solvePNPValues), ref(classList), ref(onnxModel), ref(VideoGetter), ref(MutexGet), ref(MutexShow));
-		// thread VideoStereoProcessThread(&VideoProcess:StereoProcess, )
-		thread VideoShowerThread(&VideoShow::ShowFrame, &VideoShower, ref(finalImg), ref(stereoImg), ref(cameraSources), ref(MutexShow));
+		thread VideoGetThread(&VideoGet::StartCapture, &VideoGetter, ref(visionFrame), ref(leftStereoFrame), ref(rightStereoFrame), ref(cameraSourceIndex), ref(drivingMode), ref(cameraSinks), ref(VisionMutexGet), ref(StereoMutexGet));
+		thread VideoProcessThread(&VideoProcess::Process, &VideoProcessor, ref(visionFrame), ref(finalImg), ref(targetCenterX), ref(targetCenterY), ref(centerLineTolerance), ref(contourAreaMinLimit), ref(contourAreaMaxLimit), ref(tuningMode), ref(drivingMode), ref(trackingMode), ref(takeShapshot), ref(enableSolvePNP), ref(trackbarValues), ref(trackingResults), ref(solvePNPValues), ref(classList), ref(onnxModel), ref(VideoGetter), ref(VisionMutexGet), ref(VisionMutexShow));
+		thread VideoStereoProcessThread(&VideoProcess::StereoProcess, &VideoProcessor, ref(leftStereoFrame), ref(rightStereoFrame), ref(stereoImg), ref(enableStereoVision), ref(StereoMutexGet), ref(StereoMutexShow));
+		thread VideoShowerThread(&VideoShow::ShowFrame, &VideoShower, ref(finalImg), ref(stereoImg), ref(cameraSources), ref(VisionMutexShow), ref(StereoMutexShow));
 		
 		while (1)
 		{
@@ -820,6 +824,7 @@ int main(int argc, char* argv[])
 					}
 					takeShapshot = NetworkTable->GetBoolean("Take Shapshot", false);
 					enableSolvePNP = NetworkTable->GetBoolean("Enable SolvePNP", false);
+					enableStereoVision = NetworkTable->GetBoolean("Enable StereoVision", false);
 					centerLineTolerance = NetworkTable->GetNumber("Center Line Tolerance", 50);
 					contourAreaMinLimit = NetworkTable->GetNumber("Contour Area Min Limit", 1211.0);
 					contourAreaMaxLimit = NetworkTable->GetNumber("Contour Area Max Limit", 2000);
