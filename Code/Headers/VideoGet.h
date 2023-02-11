@@ -54,10 +54,8 @@ private:
     void GetCameraFrames(CvSink &camera, Mat &mainFrame, FPS &fpsCounter, bool &stop, shared_timed_mutex &Mutex);
 
     // Declare class objects and variables.
-    FPS*					FPSCounter;
     VideoCapture			cap;
     
-    int						FPSCount;
     bool                    camerasStarted;
     bool					isStopping;
     bool					isStopped;

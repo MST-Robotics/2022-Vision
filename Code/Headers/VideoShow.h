@@ -37,6 +37,10 @@ using namespace nt;
 using namespace frc;
 using namespace wpi;
 using namespace std;
+
+// Define constants.
+const string VISION_PROCESSED_STREAM_ALIAS = "vision";
+const string STEREO_PROCESSED_STREAM_ALIAS = "stereo";
 ///////////////////////////////////////////////////////////////////////////////
 
 class VideoShow
@@ -48,15 +52,17 @@ public:
     void ShowFrame(Mat &finalImg, Mat &stereoImg, vector<CvSource> &cameraSources, shared_timed_mutex &VisionMutex, shared_timed_mutex &StereoMutex);
     void SetIsStopping(bool isStopping);
     bool GetIsStopped();
-    int GetFPS();
+    int GetFPS(const int index);
 
 private:
+    // Declare private class methods.
+    void ShowCameraFrames(CvSource &source, Mat &mainFrame, FPS &fpsCounter, bool &stop, shared_timed_mutex &Mutex);
+
     // Declare class objects and variables.
-    FPS*						FPSCounter;
-    
-    int							FPSCount;
-    bool						isStopping;
-    bool						isStopped;
+    bool                    camerasStarted;  
+    bool					isStopping;
+    bool					isStopped;
+    vector<FPS>             fpsCounters;
 };
 ///////////////////////////////////////////////////////////////////////////////
 #endif

@@ -58,14 +58,12 @@ VideoGet::~VideoGet()
 
         Returns: 		Nothing
 ****************************************************************************/
-void VideoGet::StartCapture(Mat &visionFrame, Mat &leftStereoFrame, Mat &rightStereoFrame, bool &cameraSourceIndex, bool &drivingMode, vector<CvSink> &cameraSinks, shared_timed_mutex &VisionMutex, shared_timed_mutex &StereoVision)
+void VideoGet::StartCapture(Mat &visionFrame, Mat &leftStereoFrame, Mat &rightStereoFrame, bool &cameraSourceIndex, bool &drivingMode, vector<CvSink> &cameraSinks, shared_timed_mutex &VisionMutex, shared_timed_mutex &StereoMutex)
 {
-    // Create empty mat as a placeholder for thread params.
-    Mat	emptyImg = Mat();
     // Create a vector for storing created threads.
     vector<thread*> frameThreads;
 
-    // Continuously grab camera frames.
+    // Continuously manage threads and grab camera frames.
     while (1)
     {
         try
@@ -144,11 +142,10 @@ void VideoGet::StartCapture(Mat &visionFrame, Mat &leftStereoFrame, Mat &rightSt
             break;
         }
 
-        this_thread::sleep_for(std::chrono::milliseconds(25));
+        // Sleep to save CPU time. Thead management doesn't need to update very fast.
+        this_thread::sleep_for(std::chrono::milliseconds(30));
     }
 
-    // Clean-up.
-    isStopped = true;
     // Loop through the threads in the threads vector and join them.
     for (thread* task : frameThreads)
     {
@@ -160,6 +157,8 @@ void VideoGet::StartCapture(Mat &visionFrame, Mat &leftStereoFrame, Mat &rightSt
         // Set old pointer to null.
         task = nullptr;
     }
+    // Clean-up.
+    isStopped = true;
 }
 
 /****************************************************************************

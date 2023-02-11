@@ -21,9 +21,10 @@
 VideoShow::VideoShow()
 {
     // Create objects.
-    FPSCounter							= new FPS();
+    fpsCounters                         = vector<FPS>(10);
 
     // Initialize member variables.
+    camerasStarted                      = false;
     isStopping							= false;
     isStopped							= false;
 }
@@ -37,11 +38,7 @@ VideoShow::VideoShow()
 ****************************************************************************/
 VideoShow::~VideoShow()
 {
-    // Delete object pointers.
-    delete FPSCounter;
-
-    // Set object pointers as nullptrs.
-    FPSCounter = nullptr;
+    // Nothing to do.
 }
 
 /****************************************************************************
@@ -56,36 +53,43 @@ void VideoShow::ShowFrame(Mat &finalImg, Mat &stereoImg, vector<CvSource> &camer
     // Give other threads some time.
     this_thread::sleep_for(std::chrono::milliseconds(1000));
 
+    // Create a vector for storing created threads.
+    vector<thread*> frameThreads;
+
+    // Continuously manage threads and show frames.
     while (1)
     {
-        // Increment FPS counter.
-        FPSCounter->Increment();
-
         // Check to make sure frame is not corrupt.
         try
         {
-            // Slow thread down to save bandwidth.
-            this_thread::sleep_for(std::chrono::milliseconds(25));
-
-            // Acquire resource lock for thread.
-            shared_lock<shared_timed_mutex> guard(Mutex);
-
-            // Check if frame is empty, and then add it to the streams.
-            if (!finalImg.empty())
+            // If the frame is empty, stop the capture.
+            if (cameraSources.empty())
             {
-                // Output frame to camera stream.
-                cameraSources[0].PutFrame(finalImg);
+                break;
             }
-            else
+
+            // Check if we already started cameras.
+            if (!camerasStarted)
             {
-                // Print that frame is empty.
-                cout << "WARNING: Processsed vision frame is empty!" << endl;
-            }
-            // Check if frame is empty, and then add it to the streams.
-            if (!stereoImg.empty())
-            {
-                // Output frame to camera stream.
-                cameraSources[1].PutFrame(stereoImg);
+                // Loop through all create camera streams and send frames to each one.
+                for (int i = 0; i < cameraSources.size(); i++)
+                {
+                    // If this camera has the correct alias for vision, use it as our vision stream.
+                    if (cameraSources[i].GetName().find(VISION_PROCESSED_STREAM_ALIAS) != string::npos)
+                    {
+                        // Put camera frame for vision.
+                        frameThreads.emplace_back(new thread(&VideoShow::ShowCameraFrames, this, ref(cameraSources[i]), ref(finalImg), ref(fpsCounters.at(0)), ref(isStopped), ref(VisionMutex)));
+                    }
+                    // Check if this source will be used for stereo vision stream, but make sure it doesn't contain the vision alias.
+                    else if (cameraSources[i].GetName().find(STEREO_PROCESSED_STREAM_ALIAS) != string::npos && cameraSources[i].GetName().find(VISION_PROCESSED_STREAM_ALIAS) == string::npos)
+                    {
+                        // Put camera frame for stereo.
+                        frameThreads.emplace_back(new thread(&VideoShow::ShowCameraFrames, this, ref(cameraSources[i]), ref(stereoImg), ref(fpsCounters.at(1)), ref(isStopped), ref(StereoMutex)));
+                    }
+                }
+
+                // Set toggle.
+                camerasStarted = true;
             }
         }
         catch (const exception& e)
@@ -94,18 +98,53 @@ void VideoShow::ShowFrame(Mat &finalImg, Mat &stereoImg, vector<CvSource> &camer
             cout << "WARNING: MAT corrupt. Frame has been dropped." << endl;
         }
 
-        // Calculate FPS.
-        FPSCount = FPSCounter->FramesPerSec();
-
         // If the program stops shutdown the thread.
         if (isStopping)
         {
             break;
         }
+
+        // Sleep to save CPU time. Thead management doesn't need to update very fast.
+        this_thread::sleep_for(std::chrono::milliseconds(30));
     }
 
+    // Loop through the threads in the threads vector and join them.
+    for (thread* task : frameThreads)
+    {
+        // Join.
+        task->join();
+
+        // Delete dynamically allocated object.
+        delete task;
+        // Set old pointer to null.
+        task = nullptr;
+    }
     // Clean-up.
     isStopped = true;
+}
+
+/****************************************************************************
+        Description:	This is a container method for a thread and never exits.
+                        It continuously shows new camera frames.
+
+        Arguments: 		CvSource&, MAT&, FPS&, BOOL&, SHARED_TIMED_MUTEX&
+
+        Returns: 		Nothing
+****************************************************************************/
+void VideoShow::ShowCameraFrames(CvSource &source, Mat &mainFrame, FPS &fpsCounter, bool &stop, shared_timed_mutex &Mutex)
+{
+    // Loop forever.
+    while (!stop)
+    {
+        // Acquire resource lock from process thread. This will block the process thread until processing is done.
+        shared_lock<shared_timed_mutex> guard(Mutex);
+
+        // Output frame to camera stream.
+        source.PutFrame(mainFrame);
+
+        // Increment FPS counter.
+        fpsCounter.Increment();
+    }
 }
 
 /****************************************************************************
@@ -135,12 +174,12 @@ bool VideoShow::GetIsStopped()
 /****************************************************************************
         Description:	Gets the current FPS of the thread.
 
-        Arguments: 		Nothing
+        Arguments: 		CONST INT
 
         Returns: 		INT
 ****************************************************************************/
-int VideoShow::GetFPS()
+int VideoShow::GetFPS(const int index)
 {
-    return FPSCount;
+    return fpsCounters.at(index).FramesPerSec();
 }
 ///////////////////////////////////////////////////////////////////////////////
