@@ -17,7 +17,7 @@ clean:
 
 depend: ${}
 
-OBJS=${SOURCEDIR}/FPS.o ${SOURCEDIR}/VideoGet.o ${SOURCEDIR}/VideoShow.o ${SOURCEDIR}/VideoProcess.o ${PROJECTDIR}/main.o
+OBJS=${SOURCEDIR}/FPS.o ${SOURCEDIR}/VideoGet.o ${SOURCEDIR}/VideoShow.o ${SOURCEDIR}/VideoProcess.o ${SOURCEDIR}/StereoProcess.o ${PROJECTDIR}/main.o 
 
 ${EXE}: ${OBJS}
 	${CXX} -pthread -g -o $@ $^ ${DEPS_LIBS} -Wl,--unresolved-symbols=ignore-in-shared-libs

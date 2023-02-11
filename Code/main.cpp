@@ -13,6 +13,7 @@
 
 #include "Headers/VideoGet.h"
 #include "Headers/VideoProcess.h"
+#include "Headers/StereoProcess.h"
 #include "Headers/VideoShow.h"
 #include "Headers/rapidjson/filereadstream.h"
 #include "Headers/rapidjson/filewritestream.h"
@@ -536,6 +537,7 @@ int main(int argc, char* argv[])
 		// Create object pointers for threads.
 		VideoGet VideoGetter;
 		VideoProcess VideoProcessor;
+		StereoProcess StereoProcessor;
 		VideoShow VideoShower;
 
 		// Preallocate image objects.
@@ -600,7 +602,7 @@ int main(int argc, char* argv[])
 		// Start classes multi-threading.
 		thread VideoGetThread(&VideoGet::StartCapture, &VideoGetter, ref(visionFrame), ref(leftStereoFrame), ref(rightStereoFrame), ref(cameraSourceIndex), ref(drivingMode), ref(cameraSinks), ref(VisionMutexGet), ref(StereoMutexGet));
 		thread VideoProcessThread(&VideoProcess::Process, &VideoProcessor, ref(visionFrame), ref(finalImg), ref(targetCenterX), ref(targetCenterY), ref(centerLineTolerance), ref(contourAreaMinLimit), ref(contourAreaMaxLimit), ref(tuningMode), ref(drivingMode), ref(trackingMode), ref(takeShapshot), ref(enableSolvePNP), ref(trackbarValues), ref(trackingResults), ref(solvePNPValues), ref(classList), ref(onnxModel), ref(VideoGetter), ref(VisionMutexGet), ref(VisionMutexShow));
-		thread VideoStereoProcessThread(&VideoProcess::StereoProcess, &VideoProcessor, ref(leftStereoFrame), ref(rightStereoFrame), ref(stereoImg), ref(enableStereoVision), ref(VideoGetter), ref(StereoMutexGet), ref(StereoMutexShow));
+		thread StereoProcessThread(&StereoProcess::Process, &StereoProcessor, ref(leftStereoFrame), ref(rightStereoFrame), ref(stereoImg), ref(enableStereoVision), ref(VideoGetter), ref(StereoMutexGet), ref(StereoMutexShow));
 		thread VideoShowerThread(&VideoShow::ShowFrame, &VideoShower, ref(finalImg), ref(stereoImg), ref(cameraSources), ref(VisionMutexShow), ref(StereoMutexShow));
 		
 		while (1)
@@ -934,6 +936,7 @@ int main(int argc, char* argv[])
 		// Stop all threads.
 		VideoGetThread.join();
 		VideoProcessThread.join();
+		StereoProcessThread.join();
 		VideoShowerThread.join();
 
 		// Close opened file stream.

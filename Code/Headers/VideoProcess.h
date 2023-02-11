@@ -41,22 +41,6 @@ using namespace frc;
 using namespace wpi;
 using namespace std;
 
-// Declare constants.
-const Mat KERNEL								    = getStructuringElement(MORPH_ELLIPSE, Size(3, 3));
-const int GREEN_BLUR_RADIUS						    = 3;
-const int HORIZONTAL_ASPECT						    = 4;
-const int VERTICAL_ASPECT						    = 3;
-const int CAMERA_FOV							    = 75;
-const int SCREEN_WIDTH							    = 640;
-const int SCREEN_HEIGHT							    = 480;
-const int DNN_MODEL_IMAGE_SIZE                      = 640;
-const double DNN_MINIMUM_CONFIDENCE                 = 0.4;
-const double DNN_MINIMUM_CLASS_SCORE                = 0.2;
-const double DNN_NMS_THRESH                         = 0.4;
-const double PI                                     = 3.14159265358979323846;
-const double FOCAL_LENGTH						    = (SCREEN_WIDTH / 2.0) / tan((CAMERA_FOV * PI / 180.0) / 2.0);
-const vector<Scalar> DETECTION_COLORS               = {Scalar(255, 255, 0), Scalar(0, 255, 0), Scalar(0, 255, 255), Scalar(255, 0, 0)};
-
 // Define structs.
 struct Detection
 {
@@ -74,7 +58,6 @@ public:
     VideoProcess();
     ~VideoProcess();
     void Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &targetCenterY, int &centerLineTolerance, double &contourAreaMinLimit, double &contourAreaMaxLimit, bool &tuningMode, bool &drivingMode, int &trackingMode, bool &takeShapshot, bool &solvePNPEnabled, vector<int> &trackbarValues, vector<double> &trackingResults, vector<double> &solvePNPValues, vector<string> &classList, cv::dnn::Net &onnxModel, VideoGet &VideoGetter, shared_timed_mutex &MutexGet, shared_timed_mutex &MutexShow);
-    void StereoProcess(Mat &leftFrame, Mat &rightFrame, Mat &stereoImg, bool &enableStereoVision, VideoGet &VideoGetter, shared_timed_mutex &MutexGet, shared_timed_mutex &MutexShow);
     vector<double> SolveObjectPose(vector<Point2f> imagePoints, Mat &finalImg, Mat &frame, int targetPositionX, int targetPositionY);
     int SignNum(double val);
     void SetIsStopping(bool isStopping);
@@ -109,13 +92,27 @@ private:
     vector<vector<Scalar>>      colorRanges;
     vector<string>              colors;
     FPS*						VisionFPSCounter;
-    FPS*                        StereoFPSCounter;
 
     // Declare class variables.
     int                         VisionFPSCount;
-    int                         StereoFPSCount;
     bool						isStopping;
     bool						isStopped;
+
+    // Declare constants.
+    const Mat KERNEL								    = getStructuringElement(MORPH_ELLIPSE, Size(3, 3));
+    const int GREEN_BLUR_RADIUS						    = 3;
+    const int HORIZONTAL_ASPECT						    = 4;
+    const int VERTICAL_ASPECT						    = 3;
+    const int CAMERA_FOV							    = 75;
+    const int SCREEN_WIDTH							    = 640;
+    const int SCREEN_HEIGHT							    = 480;
+    const int DNN_MODEL_IMAGE_SIZE                      = 640;
+    const double DNN_MINIMUM_CONFIDENCE                 = 0.4;
+    const double DNN_MINIMUM_CLASS_SCORE                = 0.2;
+    const double DNN_NMS_THRESH                         = 0.4;
+    const double PI                                     = 3.14159265358979323846;
+    const double FOCAL_LENGTH						    = (SCREEN_WIDTH / 2.0) / tan((CAMERA_FOV * PI / 180.0) / 2.0);
+    const vector<Scalar> DETECTION_COLORS               = {Scalar(255, 255, 0), Scalar(0, 255, 0), Scalar(0, 255, 255), Scalar(255, 0, 0)};
 };
 ///////////////////////////////////////////////////////////////////////////////
 #endif
