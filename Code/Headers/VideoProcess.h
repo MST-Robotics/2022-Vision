@@ -74,12 +74,13 @@ public:
     VideoProcess();
     ~VideoProcess();
     void Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &targetCenterY, int &centerLineTolerance, double &contourAreaMinLimit, double &contourAreaMaxLimit, bool &tuningMode, bool &drivingMode, int &trackingMode, bool &takeShapshot, bool &solvePNPEnabled, vector<int> &trackbarValues, vector<double> &trackingResults, vector<double> &solvePNPValues, vector<string> &classList, cv::dnn::Net &onnxModel, VideoGet &VideoGetter, shared_timed_mutex &MutexGet, shared_timed_mutex &MutexShow);
-    void StereoProcess(Mat &leftFrame, Mat &rightFrame, Mat &stereoImg, bool &enableStereoVision, shared_timed_mutex &MutexGet, shared_timed_mutex &MutexShow);
+    void StereoProcess(Mat &leftFrame, Mat &rightFrame, Mat &stereoImg, bool &enableStereoVision, VideoGet &VideoGetter, shared_timed_mutex &MutexGet, shared_timed_mutex &MutexShow);
     vector<double> SolveObjectPose(vector<Point2f> imagePoints, Mat &finalImg, Mat &frame, int targetPositionX, int targetPositionY);
     int SignNum(double val);
     void SetIsStopping(bool isStopping);
     bool GetIsStopped();
-    int GetFPS();
+    int GetVisionFPS();
+    int GetStereoFPS();
 
     // Declare public variables.
     enum TrackingMode
@@ -107,10 +108,12 @@ private:
     vector<Vec4i>				hierarchy;
     vector<vector<Scalar>>      colorRanges;
     vector<string>              colors;
-    FPS*						FPSCounter;
+    FPS*						VisionFPSCounter;
+    FPS*                        StereoFPSCounter;
 
     // Declare class variables.
-    int                         FPSCount;
+    int                         VisionFPSCount;
+    int                         StereoFPSCount;
     bool						isStopping;
     bool						isStopped;
 };

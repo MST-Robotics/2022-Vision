@@ -21,10 +21,12 @@
 VideoProcess::VideoProcess()
 {
     // Create object pointers.
-    FPSCounter							    = new FPS();
+    VisionFPSCounter					    = new FPS();
+    StereoFPSCounter                        = new FPS();
     
     // Initialize member variables.
-    FPSCount                                = 0;
+    VisionFPSCount                          = 0;
+    StereoFPSCount                          = 0;
     isStopping							    = false;
     isStopped							    = false;
 
@@ -76,10 +78,12 @@ VideoProcess::VideoProcess()
 VideoProcess::~VideoProcess()
 {
     // Delete object pointers.
-    delete FPSCounter;
+    delete VisionFPSCounter;
+    delete StereoFPSCounter;
 
     // Set object pointers as nullptrs.
-    FPSCounter = nullptr;
+    VisionFPSCounter = nullptr;
+    StereoFPSCounter = nullptr;
 }
 
 /****************************************************************************
@@ -98,7 +102,7 @@ void VideoProcess::Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &t
     while (1)
     {
         // Increment FPS counter.
-        FPSCounter->Increment();
+        VisionFPSCounter->Increment();
 
         // Acquire resource lock from show thread. This will block the show thread until processing is done.
         unique_lock<shared_timed_mutex> guard(MutexShow);
@@ -660,9 +664,9 @@ void VideoProcess::Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &t
                 }
 
                 // Put FPS on image.
-                FPSCount = FPSCounter->FramesPerSec();
+                VisionFPSCount = VisionFPSCounter->FramesPerSec();
                 putText(finalImg, ("Camera FPS: " + to_string(VideoGetter.GetFPS(0))), Point(420, finalImg.rows - 40), FONT_HERSHEY_DUPLEX, 0.65, Scalar(200, 200, 200), 1);
-                putText(finalImg, ("Algorithm FPS: " + to_string(FPSCount)), Point(420, finalImg.rows - 20), FONT_HERSHEY_DUPLEX, 0.65, Scalar(200, 200, 200), 1);
+                putText(finalImg, ("Algorithm FPS: " + to_string(VisionFPSCount)), Point(420, finalImg.rows - 20), FONT_HERSHEY_DUPLEX, 0.65, Scalar(200, 200, 200), 1);
 
                 // If tuning mode is enabled, then output contrast or brightness images.
                 if (tuningMode)
@@ -698,7 +702,7 @@ void VideoProcess::Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &t
 
         Returns: 		Nothing
 ****************************************************************************/
-void VideoProcess::StereoProcess(Mat &leftFrame, Mat &rightFrame, Mat &stereoImg, bool &enableStereoVision, shared_timed_mutex &MutexGet, shared_timed_mutex &MutexShow)
+void VideoProcess::StereoProcess(Mat &leftFrame, Mat &rightFrame, Mat &stereoImg, bool &enableStereoVision, VideoGet &VideoGetter, shared_timed_mutex &MutexGet, shared_timed_mutex &MutexShow)
 {
     // Give other threads enough time to start before processing camera frames.
     this_thread::sleep_for(std::chrono::milliseconds(800));
@@ -706,6 +710,9 @@ void VideoProcess::StereoProcess(Mat &leftFrame, Mat &rightFrame, Mat &stereoImg
     // Processing loop for stereo vision.
     while (1)
     {
+        // Increment FPS Counter.
+        StereoFPSCounter->Increment();
+
         // Acquire resource lock for show thread only after frame has been used.
         unique_lock<shared_timed_mutex> guard(MutexShow);
 
@@ -731,6 +738,12 @@ void VideoProcess::StereoProcess(Mat &leftFrame, Mat &rightFrame, Mat &stereoImg
                     putText(stereoImg, "Stereo computation is disabled by default to", Point(stereoImg.cols / 12, stereoImg.rows / 4), FONT_HERSHEY_DUPLEX, 0.65, Scalar(250, 100, 100), 1);
                     putText(stereoImg, "save resources. Enabled it through the shuffleboard.", Point(stereoImg.cols / 12, stereoImg.rows / 3), FONT_HERSHEY_DUPLEX, 0.65, Scalar(250, 100, 100), 1);
                 }
+
+                // Put FPS on image.
+                StereoFPSCount = StereoFPSCounter->FramesPerSec();
+                putText(stereoImg, ("Left Camera FPS: " + to_string(VideoGetter.GetFPS(1))), Point(400, stereoImg.rows - 60), FONT_HERSHEY_DUPLEX, 0.65, Scalar(200, 200, 200), 1);
+                putText(stereoImg, ("Right Camera FPS: " + to_string(VideoGetter.GetFPS(2))), Point(400, stereoImg.rows - 40), FONT_HERSHEY_DUPLEX, 0.65, Scalar(200, 200, 200), 1);
+                putText(stereoImg, ("Stereo FPS: " + to_string(StereoFPSCount)), Point(450, stereoImg.rows - 20), FONT_HERSHEY_DUPLEX, 0.65, Scalar(200, 200, 200), 1);
             }
         }
         catch (const exception& e)
@@ -928,13 +941,25 @@ bool VideoProcess::GetIsStopped()
 }
 
 /****************************************************************************
-        Description:	Gets the current FPS of the thread.
+        Description:	Gets the current FPS of the vision thread.
 
         Arguments: 		None
 
         Returns: 		INT
 ****************************************************************************/
-int VideoProcess::GetFPS()
+int VideoProcess::GetVisionFPS()
 {
-    return FPSCount;
+    return VisionFPSCount;
+}
+
+/****************************************************************************
+        Description:	Gets the current FPS of the stereo thread.
+
+        Arguments: 		None
+
+        Returns: 		INT
+****************************************************************************/
+int VideoProcess::GetStereoFPS()
+{
+    return StereoFPSCount;
 }

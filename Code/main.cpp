@@ -85,6 +85,7 @@ using namespace rapidjson;
 // Store config file.
 static const char* configFile = "/boot/frc.json";
 static const char* VisionTuningFilePath = "/home/pi/2022-Vision/Code/trackbar_values.json";
+static const char* StereoCameraParamsPath = "/home/pi/2022-Vision/Code/stereo_params.json";
 static const string YoloModelOnnxFilePath = "/home/pi/2022-Vision/YOLO_Models/COCO_v5n_Test/";
 
 // Create namespace variables, stucts, and objects.
@@ -93,6 +94,7 @@ bool server = false;
 
 // Create json interactable object.
 Document visionTuningJSON;
+Document stereoCameraParamsJSON;
 
 // Create enums.
 enum SelectionStates { TRENCH, LINE, FISH, TAPE };
@@ -437,20 +439,40 @@ int main(int argc, char* argv[])
 	}
 
 	// Open vision trackbar json for reading and writing.
-	FILE* jsonFile = fopen(VisionTuningFilePath, "r");
+	FILE* jsonVisionFile = fopen(VisionTuningFilePath, "r");
 	// Check if file was successfully opened.
-	if (jsonFile == nullptr)
+	if (jsonVisionFile == nullptr)
 	{
 		cout << "ERROR: Unable to find, open, or load trackbar JSON file. Check that it exist at this path (" << VisionTuningFilePath << ") and that it is not corrupt." << endl;
 		return EXIT_FAILURE;
 	}
-	
+	// Attempt to open JSON file containing vision tuning params.
 	// Create empty data buffer.
-	char readBuffer[65536];
+	char readBufferVision[65536];
 	// Store opened file in buffer.
-	FileReadStream readFileStream(jsonFile, readBuffer, sizeof(readBuffer));
+	FileReadStream readVisionFileStream(jsonVisionFile, readBufferVision, sizeof(readBufferVision));
 	// Parse stream buffer into rapidjson document.
-	visionTuningJSON.ParseStream(readFileStream);
+	visionTuningJSON.ParseStream(readVisionFileStream);
+
+	// Open vision trackbar json for reading and writing.
+	FILE* jsonStereoFile = fopen(StereoCameraParamsPath, "r");
+	// Check if file was successfully opened.
+	if (jsonStereoFile == nullptr)
+	{
+		cout << "Warning: Unable to find, open, or load stereo camera calibration JSON file. Check that it exist at this path (" << StereoCameraParamsPath << ") and that it is not corrupt." << endl;
+	}
+	else
+	{
+		// Attempt to open JSON file containing stereo camera calibration.
+		// Create empty data buffer.
+		char readBufferStereo[65536];
+		// Store opened file in buffer.
+		FileReadStream readStereoFileStream(jsonStereoFile, readBufferStereo, sizeof(readBufferStereo));
+		// Parse stream buffer into rapidjson document.
+		visionTuningJSON.ParseStream(readStereoFileStream);
+
+		// Pull data from the JSON file to pass to the StereoProcess thread.
+	}
 
 	/**************************************************************************
 	  			Start NetworkTables
@@ -550,24 +572,35 @@ int main(int argc, char* argv[])
 		vector<double> trackingResults {};
 		vector<double> solvePNPValues {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
-		// Start loading yolo model.
-		cout << "\nAttempting to load DNN model..." << endl;
-		cv::dnn::Net onnxModel = cv::dnn::readNet(string(YoloModelOnnxFilePath + "best.onnx"));
-		cout << "DNN Model is loaded." << endl;
-		// Get class list.
+
+		// Create DNN model object.
+		cv::dnn::Net onnxModel;
 		vector<string> classList;
-		ifstream ifs(string(YoloModelOnnxFilePath + "classes.txt"));
-		string line;
-		while (getline(ifs, line))
+		// Start loading yolo model.
+		try
 		{
-			classList.push_back(line);
+			cout << "\nAttempting to load DNN model..." << endl;
+			onnxModel = cv::dnn::readNet(string(YoloModelOnnxFilePath + "best.onnx"));
+			cout << "DNN Model is loaded." << endl;
+			// Get class list.
+			ifstream ifs(string(YoloModelOnnxFilePath + "classes.txt"));
+			string line;
+			while (getline(ifs, line))
+			{
+				classList.push_back(line);
+			}
+			cout << "DNN class list loaded successfully." << endl;
 		}
-		cout << "DNN class list loaded successfully." << endl;
+		catch (const exception& e)
+        {
+            // Print error to console and show that an error has occured on the screen.
+            cout << "\nWARNING: Unable to load DNN model, neural network inferencing will not work." << "\n" << e.what() << endl;
+        }
 
 		// Start classes multi-threading.
 		thread VideoGetThread(&VideoGet::StartCapture, &VideoGetter, ref(visionFrame), ref(leftStereoFrame), ref(rightStereoFrame), ref(cameraSourceIndex), ref(drivingMode), ref(cameraSinks), ref(VisionMutexGet), ref(StereoMutexGet));
 		thread VideoProcessThread(&VideoProcess::Process, &VideoProcessor, ref(visionFrame), ref(finalImg), ref(targetCenterX), ref(targetCenterY), ref(centerLineTolerance), ref(contourAreaMinLimit), ref(contourAreaMaxLimit), ref(tuningMode), ref(drivingMode), ref(trackingMode), ref(takeShapshot), ref(enableSolvePNP), ref(trackbarValues), ref(trackingResults), ref(solvePNPValues), ref(classList), ref(onnxModel), ref(VideoGetter), ref(VisionMutexGet), ref(VisionMutexShow));
-		thread VideoStereoProcessThread(&VideoProcess::StereoProcess, &VideoProcessor, ref(leftStereoFrame), ref(rightStereoFrame), ref(stereoImg), ref(enableStereoVision), ref(StereoMutexGet), ref(StereoMutexShow));
+		thread VideoStereoProcessThread(&VideoProcess::StereoProcess, &VideoProcessor, ref(leftStereoFrame), ref(rightStereoFrame), ref(stereoImg), ref(enableStereoVision), ref(VideoGetter), ref(StereoMutexGet), ref(StereoMutexShow));
 		thread VideoShowerThread(&VideoShow::ShowFrame, &VideoShower, ref(finalImg), ref(stereoImg), ref(cameraSources), ref(VisionMutexShow), ref(StereoMutexShow));
 		
 		while (1)
