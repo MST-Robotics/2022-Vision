@@ -312,7 +312,7 @@ void StartCamera(const CameraConfig& config)
 
 		Returns: 		Nothing
 ****************************************************************************/
-void GetJSONValues(auto &NetworkTable, int selectionState)
+void GetJSONValues(auto &NetworkTable, int selectionState = -1)
 {
 	// Create instance variables.
 	string state = "";
@@ -332,31 +332,67 @@ void GetJSONValues(auto &NetworkTable, int selectionState)
 		case TAPE:
 			state = "TAPE";
 			break;
+		default:
+			state = "STEREO";
+			break;
 	}
 
 	// Convert string parameter to char array.
 	char* jsonState = &*state.begin();
-
 	// Get corresponding object from JSON file based on tracking state.
 	const rapidjson::Value& object = visionTuningJSON[jsonState];
-	int contourAreaMinLimit = object["ContourAreaMinLimit"].GetInt();
-	int contourAreaMaxLimit = object["ContourAreaMaxLimit"].GetInt();
-	int hmn = object["HMN"].GetInt();
-	int hmx = object["HMX"].GetInt();
-	int smn = object["SMN"].GetInt();
-	int smx = object["SMX"].GetInt();
-	int vmn = object["VMN"].GetInt();
-	int vmx = object["VMX"].GetInt();
 
-	// Update network tables with the values from the JSON document object.
-	NetworkTable->PutNumber("Contour Area Min Limit", contourAreaMinLimit);
-	NetworkTable->PutNumber("Contour Area Max Limit", contourAreaMaxLimit);
-	NetworkTable->PutNumber("HMN", hmn);
-	NetworkTable->PutNumber("HMX", hmx);
-	NetworkTable->PutNumber("SMN", smn);
-	NetworkTable->PutNumber("SMX", smx);
-	NetworkTable->PutNumber("VMN", vmn);
-	NetworkTable->PutNumber("VMX", vmx);
+	// Check if we are putting normal trackbar values or stereo values.
+	if (state != "STEREO")
+	{
+		// Get trackbar values from json object.
+		int contourAreaMinLimit = object["ContourAreaMinLimit"].GetInt();
+		int contourAreaMaxLimit = object["ContourAreaMaxLimit"].GetInt();
+		int hmn = object["HMN"].GetInt();
+		int hmx = object["HMX"].GetInt();
+		int smn = object["SMN"].GetInt();
+		int smx = object["SMX"].GetInt();
+		int vmn = object["VMN"].GetInt();
+		int vmx = object["VMX"].GetInt();
+
+		// Update network tables with the values from the JSON document object.
+		NetworkTable->PutNumber("Contour Area Min Limit", contourAreaMinLimit);
+		NetworkTable->PutNumber("Contour Area Max Limit", contourAreaMaxLimit);
+		NetworkTable->PutNumber("HMN", hmn);
+		NetworkTable->PutNumber("HMX", hmx);
+		NetworkTable->PutNumber("SMN", smn);
+		NetworkTable->PutNumber("SMX", smx);
+		NetworkTable->PutNumber("VMN", vmn);
+		NetworkTable->PutNumber("VMX", vmx);
+	}
+	else
+	{
+		// Get trackbar values from json object.
+		int numDisparities = object["NumDisparities"].GetInt();
+		int minDisparities = object["MinDisparities"].GetInt();
+		int blockSize = object["BlockSize"].GetInt();
+		int preFilterType = object["PreFilterType"].GetInt();
+		int preFilterSize = object["PreFilterSize"].GetInt();
+		int preFilterCap = object["PreFilterCap"].GetInt();
+		int textureThresh = object["TextureThresh"].GetInt();
+		int uniquenessRatio = object["UniquenessRatio"].GetInt();
+		int speckleRange = object["SpeckleRange"].GetInt();
+		int speckleWindowSize = object["SpeckleWindowSize"].GetInt();
+		int disp12MaxDiff = object["Disp12MaxDiff"].GetInt();
+
+		// Update network tables with the values from the JSON document object.
+		NetworkTable->PutNumber("Stereo Num Disparities", numDisparities);
+		NetworkTable->PutNumber("Stereo Min Disparity", minDisparities);
+		NetworkTable->PutNumber("Stereo Block Size", blockSize);
+		NetworkTable->PutNumber("Stereo PreFilter Type", preFilterType);
+		NetworkTable->PutNumber("Stereo PreFilter Size", preFilterSize);
+		NetworkTable->PutNumber("Stereo PreFilter Cap", preFilterCap);
+		NetworkTable->PutNumber("Stereo TextureThresh", textureThresh);
+		NetworkTable->PutNumber("Stereo Uniqueness Ratio", uniquenessRatio);
+		NetworkTable->PutNumber("Stereo Speckle Range", speckleRange);
+		NetworkTable->PutNumber("Stereo Speckle WindowSize", speckleWindowSize);
+		NetworkTable->PutNumber("Stereo Disp12MaxDiff", disp12MaxDiff);
+	}
 }
 
 /****************************************************************************
@@ -367,7 +403,7 @@ void GetJSONValues(auto &NetworkTable, int selectionState)
 
 		Returns: 		Nothing
 ****************************************************************************/
-void PutJSONValues(auto &NetworkTable, int selectionState)
+void PutJSONValues(auto &NetworkTable, int selectionState = -1)
 {
 	// Create instance variables.
 	string state = "";
@@ -387,31 +423,67 @@ void PutJSONValues(auto &NetworkTable, int selectionState)
 		case TAPE:
 			state = "TAPE";
 			break;
+		default:
+			state = "STEREO";
+			break;
 	}
 
 	// Convert string parameter to char array.
 	char* jsonState = &*state.begin();
-
 	// Get corresponding object from JSON file based on tracking state.
 	rapidjson::Value& object = visionTuningJSON[jsonState];
-	int contourAreaMinLimit = NetworkTable->GetNumber("Contour Area Min Limit", 0);
-	int contourAreaMaxLimit = NetworkTable->GetNumber("Contour Area Max Limit", 0);
-	int hmn = NetworkTable->GetNumber("HMN", 0);
-	int hmx = NetworkTable->GetNumber("HMX", 0);
-	int smn = NetworkTable->GetNumber("SMN", 0);
-	int smx = NetworkTable->GetNumber("SMX", 0);
-	int vmn = NetworkTable->GetNumber("VMN", 0);
-	int vmx = NetworkTable->GetNumber("VMX", 0);
 
-	// Update network tables with the values from the JSON document object.
-	object["ContourAreaMinLimit"].SetInt(contourAreaMinLimit);
-	object["ContourAreaMaxLimit"].SetInt(contourAreaMaxLimit);
-	object["HMN"].SetInt(hmn);
-	object["HMX"].SetInt(hmx);
-	object["SMN"].SetInt(smn);
-	object["SMX"].SetInt(smx);
-	object["VMN"].SetInt(vmn);
-	object["VMX"].SetInt(vmx);
+	// Check if we are putting normal trackbar values or stereo values.
+	if (state != "STEREO")
+	{
+		// Get trackbar values from NetworkTables.
+		int contourAreaMinLimit = NetworkTable->GetNumber("Contour Area Min Limit", 0);
+		int contourAreaMaxLimit = NetworkTable->GetNumber("Contour Area Max Limit", 0);
+		int hmn = NetworkTable->GetNumber("HMN", 0);
+		int hmx = NetworkTable->GetNumber("HMX", 0);
+		int smn = NetworkTable->GetNumber("SMN", 0);
+		int smx = NetworkTable->GetNumber("SMX", 0);
+		int vmn = NetworkTable->GetNumber("VMN", 0);
+		int vmx = NetworkTable->GetNumber("VMX", 0);
+
+		// Update json object with current trackbar values.
+		object["ContourAreaMinLimit"].SetInt(contourAreaMinLimit);
+		object["ContourAreaMaxLimit"].SetInt(contourAreaMaxLimit);
+		object["HMN"].SetInt(hmn);
+		object["HMX"].SetInt(hmx);
+		object["SMN"].SetInt(smn);
+		object["SMX"].SetInt(smx);
+		object["VMN"].SetInt(vmn);
+		object["VMX"].SetInt(vmx);
+	}
+	else
+	{
+		// Get trackbar values from NetworkTables.
+		int numDisparities = NetworkTable->GetNumber("Stereo Num Disparities", 18);
+		int minDisparities = NetworkTable->GetNumber("Stereo Min Disparity", 25);
+		int blockSize = NetworkTable->GetNumber("Stereo Block Size", 50);
+		int preFilterType = NetworkTable->GetNumber("Stereo PreFilter Type", 1);
+		int preFilterSize= NetworkTable->GetNumber("Stereo PreFilter Size", 25);
+		int preFilterCap = NetworkTable->GetNumber("Stereo PreFilter Cap", 62);
+		int textureThresh = NetworkTable->GetNumber("Stereo TextureThresh", 100);
+		int uniquenessRatio = NetworkTable->GetNumber("Stereo Uniqueness Ratio", 100);
+		int speckleRange = NetworkTable->GetNumber("Stereo Speckle Range", 100);
+		int speckleWindowSize = NetworkTable->GetNumber("Stereo Speckle WindowSize", 25);
+		int disp12MaxDiff = NetworkTable->GetNumber("Stereo Disp12MaxDiff", 25);
+
+		// Update json object with current trackbar values.
+		object["NumDisparities"].SetInt(numDisparities);
+		object["MinDisparities"].SetInt(minDisparities);
+		object["BlockSize"].SetInt(blockSize);
+		object["PreFilterType"].SetInt(preFilterType);
+		object["PreFilterSize"].SetInt(preFilterSize);
+		object["PreFilterCap"].SetInt(preFilterCap);
+		object["TextureThresh"].SetInt(textureThresh);
+		object["UniquenessRatio"].SetInt(uniquenessRatio);
+		object["SpeckleRange"].SetInt(speckleRange);
+		object["SpeckleWindowSize"].SetInt(speckleWindowSize);
+		object["Disp12MaxDiff"].SetInt(disp12MaxDiff);
+	}
 }
 
 
@@ -520,6 +592,18 @@ int main(int argc, char* argv[])
 	NetworkTable->PutNumber("VMN", 0);
 	NetworkTable->PutNumber("VMX", 0);
 	NetworkTable->PutNumberArray("Tracking Results", vector<double> {});
+	// Populate NetworkTables with adjustable stereo parameters.
+    NetworkTable->PutNumber("Stereo Num Disparities", 18);
+	NetworkTable->PutNumber("Stereo Min Disparity", 25);
+    NetworkTable->PutNumber("Stereo Block Size", 50);
+    NetworkTable->PutNumber("Stereo PreFilter Type", 1);
+	NetworkTable->PutNumber("Stereo PreFilter Size", 25);
+	NetworkTable->PutNumber("Stereo PreFilter Cap", 62);
+	NetworkTable->PutNumber("Stereo TextureThresh", 100);
+	NetworkTable->PutNumber("Stereo Uniqueness Ratio", 100);
+	NetworkTable->PutNumber("Stereo Speckle Range", 100);
+	NetworkTable->PutNumber("Stereo Speckle WindowSize", 25);
+	NetworkTable->PutNumber("Stereo Disp12MaxDiff", 25);
 
 	/**************************************************************************
 	 			Start Cameras
@@ -890,6 +974,8 @@ int main(int argc, char* argv[])
 					{ 
 						// Make sure to store the current trackbar values in current state.
 						PutJSONValues(NetworkTable, selectionState);
+						// Always store the stereo values.
+						PutJSONValues(NetworkTable);
 
 						// Create string buffer for storing the current json object values.
 						StringBuffer buffer;
@@ -898,7 +984,7 @@ int main(int argc, char* argv[])
 						
 						// Convert the buffer to a Cstring.
 						const char* output = buffer.GetString();
-						cout << output << endl;
+						cout << "JSON Data: " << output << endl;
 
 						// Reopen and clear json file.
 						FILE* file = fopen(VisionTuningFilePath, "w");
