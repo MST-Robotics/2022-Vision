@@ -78,7 +78,7 @@ void StereoProcess::Process(Mat &leftFrame, Mat &rightFrame, Mat &stereoImg, boo
                 // Check if stereo vision computing is enabled.
                 if (enableStereoVision)
                 {
-                    
+                    stereoImg = leftFrame.clone();
                 }
                 else
                 {

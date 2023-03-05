@@ -95,15 +95,17 @@ void VideoGet::StartCapture(Mat &visionFrame, Mat &leftStereoFrame, Mat &rightSt
                             if (cameraSinks[i].GetName().find(LEFT_STEREO_DASHBOARD_ALIAS) != string::npos)
                             {
                                 // Grab camera frame for vision and left stereo.
-                                frameThreads.emplace_back(new thread(&VideoGet::GetCameraFrames, this, ref(cameraSinks[i]), ref(visionFrame), ref(fpsCounters.at(0)), ref(isStopped), ref(VisionMutex)));
-                                frameThreads.emplace_back(new thread(&VideoGet::GetCameraFrames, this, ref(cameraSinks[i]), ref(leftStereoFrame), ref(fpsCounters.at(1)), ref(isStopped), ref(StereoMutex)));
+                                // frameThreads.emplace_back(new thread(&VideoGet::GetCameraFrames, this, ref(cameraSinks[i]), ref(visionFrame), ref(fpsCounters.at(0)), ref(isStopped), ref(VisionMutex)));
+                                // frameThreads.emplace_back(new thread(&VideoGet::GetCameraFrames, this, ref(cameraSinks[i]), ref(leftStereoFrame), ref(fpsCounters.at(1)), ref(isStopped), ref(StereoMutex)));
+                                frameThreads.emplace_back(new thread(&VideoGet::GetTwoCameraFrames, this, ref(cameraSinks[i]), ref(visionFrame), ref(leftStereoFrame), ref(fpsCounters.at(0)), ref(fpsCounters.at(1)), ref(isStopped), ref(VisionMutex), ref(StereoMutex)));   
                             }
                             // Check if this camera will also be used for right stereo vision.
                             else if (cameraSinks[i].GetName().find(RIGHT_STEREO_DASHBOARD_ALIAS) != string::npos)
                             {
                                 // Grab camera frame for vision.
-                                frameThreads.emplace_back(new thread(&VideoGet::GetCameraFrames, this, ref(cameraSinks[i]), ref(visionFrame), ref(fpsCounters.at(0)), ref(isStopped), ref(VisionMutex)));
-                                frameThreads.emplace_back(new thread(&VideoGet::GetCameraFrames, this, ref(cameraSinks[i]), ref(rightStereoFrame), ref(fpsCounters.at(2)), ref(isStopped), ref(StereoMutex)));
+                                // frameThreads.emplace_back(new thread(&VideoGet::GetCameraFrames, this, ref(cameraSinks[i]), ref(visionFrame), ref(fpsCounters.at(0)), ref(isStopped), ref(VisionMutex)));
+                                // frameThreads.emplace_back(new thread(&VideoGet::GetCameraFrames, this, ref(cameraSinks[i]), ref(rightStereoFrame), ref(fpsCounters.at(2)), ref(isStopped), ref(StereoMutex)));
+                                frameThreads.emplace_back(new thread(&VideoGet::GetTwoCameraFrames, this, ref(cameraSinks[i]), ref(visionFrame), ref(rightStereoFrame), ref(fpsCounters.at(0)), ref(fpsCounters.at(2)), ref(isStopped), ref(VisionMutex), ref(StereoMutex)));
                             }
                             else
                             {
@@ -166,7 +168,7 @@ void VideoGet::StartCapture(Mat &visionFrame, Mat &leftStereoFrame, Mat &rightSt
                         It continuously gets new camera frames and stores them in
                         given mat.
 
-        Arguments: 		CvSink&, VECTOR&, FPS&, BOOL&, SHARED_TIMED_MUTEX&
+        Arguments: 		CvSink&, MAT&, FPS&, BOOL&, SHARED_TIMED_MUTEX&
 
         Returns: 		Nothing
 ****************************************************************************/
@@ -183,6 +185,36 @@ void VideoGet::GetCameraFrames(CvSink &camera, Mat &mainFrame, FPS &fpsCounter, 
 
         // Increment FPS counter.
         fpsCounter.Increment();
+    }
+}
+
+/****************************************************************************
+        Description:	This is a container method for a thread and never exits.
+                        It continuously gets new camera frames and stores them in
+                        the two given mats. Seperate locks are aquired for each.
+
+        Arguments: 		CvSink&, MAT&, MAT&, FPS&, BOOL&, SHARED_TIMED_MUTEX&, SHARED_TIMED_MUTEX&
+
+        Returns: 		Nothing
+****************************************************************************/
+void VideoGet::GetTwoCameraFrames(CvSink &camera, Mat &mainFrame, Mat &secondaryFrame, FPS &mainFPSCounter, FPS &secondaryFPSCounter, bool &stop, shared_timed_mutex &mainMutex, shared_timed_mutex &secondaryMutex)
+{
+    // Loop forever.
+    while (!stop)
+    {
+        // Acquire resource lock from process thread. This will block the process thread until processing is done.
+        // unique_lock<shared_timed_mutex> mainGuard(mainMutex);
+        // Get camera frame.
+        int retTime = camera.GrabFrame(mainFrame, FRAME_GET_TIMEOUT);
+
+        // Acquire resource lock from process thread. This will block the process thread until processing is done.
+        // unique_lock<shared_timed_mutex> secondaryGuard(secondaryMutex);
+        // Copy new frames stored in mainFrame mat to secondaryFrame mat.
+        secondaryFrame = mainFrame.clone();
+
+        // Increment FPS counters.
+        mainFPSCounter.Increment();
+        secondaryFPSCounter.Increment();
     }
 }
 
