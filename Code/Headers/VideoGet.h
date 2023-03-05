@@ -51,8 +51,8 @@ public:
 
 private:
     // Declare private class methods.
-    void GetCameraFrames(CvSink &camera, Mat &mainFrame, FPS &fpsCounter, bool &stop, shared_timed_mutex &Mutex);
-    void GetTwoCameraFrames(CvSink &camera, Mat &mainFrame, Mat &secondaryFrame, FPS &mainFPSCounter, FPS &secondaryFPSCounter, bool &stop, shared_timed_mutex &mainMutex, shared_timed_mutex &secondaryMutex);
+    void GetCameraFrames(CvSink &camera, Mat &mainFrame, FPS &fpsCounter, shared_timed_mutex &Mutex);
+    void GetTwoCameraFrames(CvSink &camera, Mat &mainFrame, Mat &secondaryFrame, FPS &mainFPSCounter, FPS &secondaryFPSCounter, shared_timed_mutex &mainMutex, shared_timed_mutex &secondaryMutex);
 
     // Declare class objects and variables.
     VideoCapture			cap;

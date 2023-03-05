@@ -56,7 +56,7 @@ public:
 
 private:
     // Declare private class methods.
-    void ShowCameraFrames(CvSource &source, Mat &mainFrame, FPS &fpsCounter, bool &stop, shared_timed_mutex &Mutex);
+    void ShowCameraFrames(CvSource &source, Mat &mainFrame, FPS &fpsCounter, shared_timed_mutex &Mutex);
 
     // Declare class objects and variables.
     bool                    camerasStarted;  

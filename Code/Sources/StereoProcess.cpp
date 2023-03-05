@@ -110,6 +110,9 @@ void StereoProcess::Process(Mat &leftFrame, Mat &rightFrame, Mat &stereoImg, boo
             break;
         } 
     }
+
+    // Clean-up.
+    isStopped = true;
 }
 
 /****************************************************************************

@@ -78,13 +78,13 @@ void VideoShow::ShowFrame(Mat &finalImg, Mat &stereoImg, vector<CvSource> &camer
                     if (cameraSources[i].GetName().find(VISION_PROCESSED_STREAM_ALIAS) != string::npos)
                     {
                         // Put camera frame for vision.
-                        frameThreads.emplace_back(new thread(&VideoShow::ShowCameraFrames, this, ref(cameraSources[i]), ref(finalImg), ref(fpsCounters.at(0)), ref(isStopped), ref(VisionMutex)));
+                        frameThreads.emplace_back(new thread(&VideoShow::ShowCameraFrames, this, ref(cameraSources[i]), ref(finalImg), ref(fpsCounters.at(0)), ref(VisionMutex)));
                     }
                     // Check if this source will be used for stereo vision stream, but make sure it doesn't contain the vision alias.
                     else if (cameraSources[i].GetName().find(STEREO_PROCESSED_STREAM_ALIAS) != string::npos && cameraSources[i].GetName().find(VISION_PROCESSED_STREAM_ALIAS) == string::npos)
                     {
                         // Put camera frame for stereo.
-                        frameThreads.emplace_back(new thread(&VideoShow::ShowCameraFrames, this, ref(cameraSources[i]), ref(stereoImg), ref(fpsCounters.at(1)), ref(isStopped), ref(StereoMutex)));
+                        frameThreads.emplace_back(new thread(&VideoShow::ShowCameraFrames, this, ref(cameraSources[i]), ref(stereoImg), ref(fpsCounters.at(1)), ref(StereoMutex)));
                     }
                 }
 
@@ -119,6 +119,7 @@ void VideoShow::ShowFrame(Mat &finalImg, Mat &stereoImg, vector<CvSource> &camer
         // Set old pointer to null.
         task = nullptr;
     }
+
     // Clean-up.
     isStopped = true;
 }
@@ -127,14 +128,14 @@ void VideoShow::ShowFrame(Mat &finalImg, Mat &stereoImg, vector<CvSource> &camer
         Description:	This is a container method for a thread and never exits.
                         It continuously shows new camera frames.
 
-        Arguments: 		CvSource&, MAT&, FPS&, BOOL&, SHARED_TIMED_MUTEX&
+        Arguments: 		CvSource&, MAT&, FPS&, SHARED_TIMED_MUTEX&
 
         Returns: 		Nothing
 ****************************************************************************/
-void VideoShow::ShowCameraFrames(CvSource &source, Mat &mainFrame, FPS &fpsCounter, bool &stop, shared_timed_mutex &Mutex)
+void VideoShow::ShowCameraFrames(CvSource &source, Mat &mainFrame, FPS &fpsCounter, shared_timed_mutex &Mutex)
 {
     // Loop forever.
-    while (!stop)
+    while (!isStopping)
     {
         // Acquire resource lock from process thread. This will block the process thread until processing is done.
         shared_lock<shared_timed_mutex> guard(Mutex);

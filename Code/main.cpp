@@ -637,6 +637,9 @@ int main(int argc, char* argv[])
 		shared_timed_mutex StereoMutexGet;
 		shared_timed_mutex StereoMutexShow;
 
+		// Load values for stereo trackbars from JSON and set them in NetworkTables.
+		GetJSONValues(NetworkTable);
+
 		// Vision options and values.
 		int targetCenterX = 0;
 		int targetCenterY = 0;
@@ -694,7 +697,7 @@ int main(int argc, char* argv[])
 			try
 			{
 				// Check if any of the threads have stopped.
-				if (!VideoGetter.GetIsStopped() && !VideoProcessor.GetIsStopped() && !VideoShower.GetIsStopped() && !stopProgam)
+				if (!VideoGetter.GetIsStopped() && !VideoProcessor.GetIsStopped() && !StereoProcessor.GetIsStopped() && !VideoShower.GetIsStopped() && !stopProgam)
 				{
 					// Get NetworkTables data.
 					writeJSON = NetworkTable->GetBoolean("Write JSON", false);
@@ -1009,6 +1012,7 @@ int main(int argc, char* argv[])
 					// Notify other threads the program is stopping.
 					VideoGetter.SetIsStopping(true);
 					VideoProcessor.SetIsStopping(true);
+					StereoProcessor.SetIsStopping(true);
 					VideoShower.SetIsStopping(true);
 					break;
 				}
