@@ -204,12 +204,12 @@ void VideoGet::GetTwoCameraFrames(CvSink &camera, Mat &mainFrame, Mat &secondary
     while (!isStopping)
     {
         // Acquire resource lock from process thread. This will block the process thread until processing is done.
-        // unique_lock<shared_timed_mutex> mainGuard(mainMutex);
+        unique_lock<shared_timed_mutex> mainGuard(mainMutex);
         // Get camera frame.
         int retTime = camera.GrabFrame(mainFrame, FRAME_GET_TIMEOUT);
 
         // Acquire resource lock from process thread. This will block the process thread until processing is done.
-        // unique_lock<shared_timed_mutex> secondaryGuard(secondaryMutex);
+        unique_lock<shared_timed_mutex> secondaryGuard(secondaryMutex);
         // Copy new frames stored in mainFrame mat to secondaryFrame mat.
         secondaryFrame = mainFrame.clone();
 

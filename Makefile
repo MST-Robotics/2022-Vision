@@ -1,11 +1,21 @@
-DEPS_CFLAGS?=$(shell env PKG_CONFIG_PATH=/usr/local/frc/lib/pkgconfig pkg-config --cflags wpilibc)
-CXXFLAGS?=-std=c++17 -Wno-psabi -g
-DEPS_LIBS?=$(shell env PKG_CONFIG_PATH=/usr/local/frc/lib/pkgconfig pkg-config --libs wpilibc)
+SOURCES=$(shell find ./ -type f -name '*.cpp')
+HEADERS=$(shell find ./ -type f -name '*.h')
+OBJECTS=$(SOURCES:%.cpp=%.o)
 EXE=VISION
 DESTDIR?=/home/pi/
-PROJECTDIR=Code
-SOURCEDIR=Code/Sources
-.PHONY: clean build install
+
+DEPS_CFLAGS?=$(shell env PKG_CONFIG_PATH=/usr/local/frc/lib/pkgconfig pkg-config --cflags wpilibc)
+FLAGS?=-std=c++17 -Wno-psabi
+DEPS_LIBS?=$(shell env PKG_CONFIG_PATH=/usr/local/frc/lib/pkgconfig pkg-config --libs wpilibc)
+
+all: ${EXE}
+
+.PHONY: debug clean
+
+debug: FLAGS=-std=c++17 -Wno-psabi -Wall -Wextra -g -fsanitize=address -fno-omit-frame-pointer
+debug: exportenv
+debug: clean
+debug: ${EXE}
 
 build: ${EXE}
 
@@ -13,14 +23,17 @@ install: build
 	cp ${EXE} runCamera ${DESTDIR}
 
 clean:
-	rm ${EXE} *.o
+	-@rm -f ${EXE}
+	-@rm -f ${OBJECTS}
 
 depend: ${}
 
-OBJS=${SOURCEDIR}/FPS.o ${SOURCEDIR}/VideoGet.o ${SOURCEDIR}/VideoShow.o ${SOURCEDIR}/VideoProcess.o ${SOURCEDIR}/StereoProcess.o ${PROJECTDIR}/main.o 
-
-${EXE}: ${OBJS}
-	${CXX} -pthread -g -o $@ $^ ${DEPS_LIBS} -Wl,--unresolved-symbols=ignore-in-shared-libs
+${EXE}: ${OBJECTS}
+	${CXX} -pthread -o $@ $^ ${DEPS_LIBS} ${FLAGS} -Wl,--unresolved-symbols=ignore-in-shared-libs
 
 .cpp.o:
-	${CXX} -pthread -g -Og -c -o $@ ${CXXFLAGS} ${DEPS_CFLAGS} $<
+	${CXX} -pthread -Og -c -o $@ ${FLAGS} ${DEPS_CFLAGS} $<
+
+exportenv:
+	-@export ASAN_SYMBOLIZER_PATH='which llvm-symbolizer'
+	-@export ASAN_OPTIONS=symbolize=1
