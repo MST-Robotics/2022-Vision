@@ -15,10 +15,10 @@
 #include "Headers/VideoProcess.h"
 #include "Headers/StereoProcess.h"
 #include "Headers/VideoShow.h"
-#include "Headers/rapidjson/filereadstream.h"
-#include "Headers/rapidjson/filewritestream.h"
-#include "Headers/rapidjson/writer.h"
-#include "Headers/rapidjson/document.h"
+#include "../Resources/rapidjson/filereadstream.h"
+#include "../Resources/rapidjson/filewritestream.h"
+#include "../Resources/rapidjson/writer.h"
+#include "../Resources/rapidjson/document.h"
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core/core.hpp>
@@ -32,10 +32,7 @@
 #include <wpi/raw_ostream.h>
 #include <cameraserver/CameraServer.h>
 
-// #include "edgetpu.h"
-// #include "coral/classification/adapter.h"
-// #include "coral/examples/file_utils.h"
-// #include "coral/tflite_utils.h"
+#include "edgetpu.h"
 #include "tensorflow/lite/interpreter.h"
 
 using namespace cv;

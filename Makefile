@@ -6,15 +6,15 @@ DESTDIR?=/home/pi/
 
 KERNEL_NAME=rpi_$(shell uname -m)
 TENSORFLOW_PATH=/home/pi/tensorflow
-EDGETPU_PATH=/home/pi/edgetpu
-TFLITE_MAKE_PATH=$(TENSORFLOW_PATH)/tensorflow/lite/tools/make
+EDGETPU_PATH=./Resources/libedgetpu/tflite/public
+LIBEDGETPU_PATH=/usr/lib/arm-linux-gnueabihf
 TFDEPS_CFLAGS+=\
-    -I$(MAKEFILE_DIR)/edgetpu_runtime/libedgetpu/ \
+	-I$(EDGETPU_PATH) \
 	-I$(TENSORFLOW_PATH) \
 	-I$(TENSORFLOW_PATH)/tensorflow/lite/tools/make/downloads/flatbuffers/include \
 	-L$(TENSORFLOW_PATH)/tensorflow/lite/tools/make/gen/${KERNEL_NAME}/lib \
-	-L$(MAKEFILE_DIR)/edgetpu_runtime/libedgetpu/direct/aarch64/ \
-	-ltensorflow-lite -l:libedgetpu.so.1.0 -lpthread -lm -ldl
+	-L$(LIBEDGETPU_PATH) \
+	-ltensorflow-lite -llibedgetpu -lpthread -lm -ldl
 
 DEPS_CFLAGS?=$(shell env PKG_CONFIG_PATH=/usr/local/frc/lib/pkgconfig pkg-config --cflags wpilibc)
 FLAGS?=-std=c++17 -Wno-psabi

@@ -115,5 +115,7 @@ $ cmake -DCMAKE_C_COMPILER=gcc \
   -DTFLITE_ENABLE_XNNPACK=ON \
   ../tensorflow/lite/
 # Finally, compile tensorflowlite.
-make -j4
+sudo make -j4
+sudo make install
+sudo ldconfig
 
