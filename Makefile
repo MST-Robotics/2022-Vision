@@ -4,6 +4,18 @@ OBJECTS=$(SOURCES:%.cpp=%.o)
 EXE=VISION
 DESTDIR?=/home/pi/
 
+KERNEL_NAME=rpi_$(shell uname -m)
+TENSORFLOW_PATH=/home/pi/tensorflow
+EDGETPU_PATH=/home/pi/edgetpu
+TFLITE_MAKE_PATH=$(TENSORFLOW_PATH)/tensorflow/lite/tools/make
+TFDEPS_CFLAGS+=\
+    -I$(MAKEFILE_DIR)/edgetpu_runtime/libedgetpu/ \
+	-I$(TENSORFLOW_PATH) \
+	-I$(TENSORFLOW_PATH)/tensorflow/lite/tools/make/downloads/flatbuffers/include \
+	-L$(TENSORFLOW_PATH)/tensorflow/lite/tools/make/gen/${KERNEL_NAME}/lib \
+	-L$(MAKEFILE_DIR)/edgetpu_runtime/libedgetpu/direct/aarch64/ \
+	-ltensorflow-lite -l:libedgetpu.so.1.0 -lpthread -lm -ldl
+
 DEPS_CFLAGS?=$(shell env PKG_CONFIG_PATH=/usr/local/frc/lib/pkgconfig pkg-config --cflags wpilibc)
 FLAGS?=-std=c++17 -Wno-psabi
 DEPS_LIBS?=$(shell env PKG_CONFIG_PATH=/usr/local/frc/lib/pkgconfig pkg-config --libs wpilibc)
@@ -32,7 +44,7 @@ ${EXE}: ${OBJECTS}
 	${CXX} -pthread -o $@ $^ ${DEPS_LIBS} ${FLAGS} -Wl,--unresolved-symbols=ignore-in-shared-libs
 
 .cpp.o:
-	${CXX} -pthread -Og -c -o $@ ${FLAGS} ${DEPS_CFLAGS} $<
+	${CXX} -pthread -Og -c -o $@ ${FLAGS} ${DEPS_CFLAGS} ${TFDEPS_CFLAGS} $<
 
 exportenv:
 	-@export ASAN_SYMBOLIZER_PATH='which llvm-symbolizer'

@@ -32,6 +32,12 @@
 #include <wpi/raw_ostream.h>
 #include <cameraserver/CameraServer.h>
 
+// #include "edgetpu.h"
+// #include "coral/classification/adapter.h"
+// #include "coral/examples/file_utils.h"
+// #include "coral/tflite_utils.h"
+#include "tensorflow/lite/interpreter.h"
+
 using namespace cv;
 using namespace cs;
 using namespace nt;
