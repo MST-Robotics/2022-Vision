@@ -14,7 +14,7 @@ TFDEPS_CFLAGS+=\
 	-I$(TENSORFLOW_PATH)/tensorflow/lite/tools/make/downloads/flatbuffers/include \
 	-L$(TENSORFLOW_PATH)/tensorflow/lite/tools/make/gen/${KERNEL_NAME}/lib \
 	-L$(LIBEDGETPU_PATH) \
-	-ltensorflow-lite -llibedgetpu -lpthread -lm -ldl
+	-ltensorflow-lite -l:libedgetpu.so.1.0 -lpthread -lm -ldl
 
 DEPS_CFLAGS?=$(shell env PKG_CONFIG_PATH=/usr/local/frc/lib/pkgconfig pkg-config --cflags wpilibc)
 FLAGS?=-std=c++17 -Wno-psabi
