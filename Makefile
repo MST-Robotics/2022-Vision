@@ -1,11 +1,11 @@
-SOURCES=$(shell find ./ -type f -name '*.cpp')
-HEADERS=$(shell find ./ -type f -name '*.h')
+SOURCES=$(shell find ./Code -type f -name '*.cpp')
+HEADERS=$(shell find ./Code -type f -name '*.h')
 OBJECTS=$(SOURCES:%.cpp=%.o)
 EXE=VISION
 DESTDIR?=/home/pi/
 
 KERNEL_NAME=rpi_$(shell uname -m)
-TENSORFLOW_PATH=/home/pi/tensorflow
+TENSORFLOW_PATH=./Resources/tensorflow
 EDGETPU_PATH=./Resources/libedgetpu/tflite/public
 LIBEDGETPU_PATH=/usr/lib/arm-linux-gnueabihf
 TFDEPS_CFLAGS+=\
