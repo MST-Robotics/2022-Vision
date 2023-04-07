@@ -41,7 +41,7 @@ clean:
 depend: ${}
 
 ${EXE}: ${OBJECTS}
-	${CXX} -pthread -o $@ $^ ${DEPS_LIBS} ${FLAGS} -Wl,--unresolved-symbols=ignore-in-shared-libs
+	${CXX} -pthread -o $@ $^ ${TFDEPS_CFLAGS} ${DEPS_LIBS} ${FLAGS} -Wl,--unresolved-symbols=ignore-in-shared-libs
 
 .cpp.o:
 	${CXX} -pthread -Og -c -o $@ ${FLAGS} ${DEPS_CFLAGS} ${TFDEPS_CFLAGS} $<

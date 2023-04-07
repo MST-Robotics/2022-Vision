@@ -4,6 +4,7 @@
 #include <thread>
 #include <future>
 #include <mutex>
+#include <memory>
 #include <shared_mutex>
 #include <iostream>
 #include <fstream>
@@ -31,9 +32,11 @@
 #include <wpi/raw_istream.h>
 #include <wpi/raw_ostream.h>
 #include <cameraserver/CameraServer.h>
-
-#include "edgetpu.h"
-#include "tensorflow/lite/interpreter.h"
+#include <edgetpu.h>
+#include <tensorflow/lite/interpreter.h>
+#include <tensorflow/lite/model.h>
+#include <tensorflow/lite/builtin_op_data.h>
+#include <tensorflow/lite/kernels/register.h>
 
 using namespace cv;
 using namespace cs;
@@ -90,7 +93,7 @@ using namespace rapidjson;
 static const char* configFile = "/boot/frc.json";
 static const char* VisionTuningFilePath = "/home/pi/2022-Vision/Code/trackbar_values.json";
 static const char* StereoCameraParamsPath = "/home/pi/2022-Vision/Code/stereo_params.json";
-static const string YoloModelOnnxFilePath = "/home/pi/2022-Vision/YOLO_Models/COCO_v5n_Test/";
+static const string YoloModelFilePath = "/home/pi/2022-Vision/YOLO_Models/COCO_v5n_Test/";
 
 // Create namespace variables, stucts, and objects.
 unsigned int team;
@@ -305,6 +308,65 @@ void StartCamera(const CameraConfig& config)
 	cameras.emplace_back(camera);
 	cameraSinks.emplace_back(cvSink);
 	cameraSources.emplace_back(cvSource);
+}
+
+/****************************************************************************
+		Description:	Build a EdgeTPU Interpreter to run inference with the
+						CoralUSB Accelerator.
+
+		Arguments: 		CONST FLATBUFFERMODEL, EDGETPUCONTEXT
+
+		Returns: 		UNIQUE_PTR<TFLITE::INTERPRETER> interpreter
+****************************************************************************/
+unique_ptr<tflite::Interpreter> BuildEdgeTpuInterpreter(const tflite::FlatBufferModel& model, edgetpu::EdgeTpuContext* edgetpuContext)
+{
+	// Create instance variables.
+	tflite::ops::builtin::BuiltinOpResolver resolver;
+	unique_ptr<tflite::Interpreter> interpreter;
+
+	// Create a resolver to delegate which operations are ran on the CPU or TPU.
+	resolver.AddCustom(edgetpu::kCustomOp, edgetpu::RegisterCustomOp());
+	// Build the Tensorflow Interpreter.
+	if (tflite::InterpreterBuilder(model, resolver)(&interpreter) != kTfLiteOk) {
+	cout << "Failed to build Tensorflow interpreter." << endl;
+	}
+
+	// Bind given context with interpreter.
+	interpreter->SetExternalContext(kTfLiteEdgeTpuContext, edgetpuContext);
+	interpreter->SetNumThreads(1);
+	if (interpreter->AllocateTensors() != kTfLiteOk) {
+	cout << "Failed to allocate tensors." << endl;
+	}
+
+	// Return pointer to built interpreter.
+	return interpreter;
+}
+
+/****************************************************************************
+		Description:	Build a Tensorflow Interpreter to run inference with the
+						with the CPU.
+
+		Arguments: 		CONST FLATBUFFERMODEL
+
+		Returns: 		UNIQUE_PTR<TFLITE::INTERPRETER> interpreter
+****************************************************************************/
+unique_ptr<tflite::Interpreter> BuildInterpreter(const tflite::FlatBufferModel& model)
+{
+  	// Create instance variables.
+	tflite::ops::builtin::BuiltinOpResolver resolver;
+	unique_ptr<tflite::Interpreter> interpreter;
+
+	// Build the Tensorflow Interpreter.
+	if (tflite::InterpreterBuilder(model, resolver)(&interpreter) != kTfLiteOk) {
+		std::cerr << "Failed to build interpreter." << std::endl;
+	}
+	interpreter->SetNumThreads(1);
+	if (interpreter->AllocateTensors() != kTfLiteOk) {
+		std::cerr << "Failed to allocate tensors." << std::endl;
+	}
+
+	// Return pointer to built interpreter.
+	return interpreter;
 }
 
 /****************************************************************************
@@ -617,8 +679,74 @@ int main(int argc, char* argv[])
 	}
 
 	/**************************************************************************
+				Load Neural Network Model for opencv CPU processing.
+	**************************************************************************/
+	// Create DNN model object.
+	cv::dnn::Net onnxModel;
+	vector<string> classList;
+	// Start loading yolo model.
+	try
+	{
+		cout << "\nAttempting to load ONNX DNN model..." << endl;
+		onnxModel = cv::dnn::readNet(string(YoloModelFilePath + "best.onnx"));
+		cout << "ONNX DNN Model is loaded." << endl;
+		// Get class list.
+		ifstream ifs(string(YoloModelFilePath + "classes.txt"));
+		string line;
+		while (getline(ifs, line))
+		{
+			classList.push_back(line);
+		}
+		cout << "ONNX DNN class list loaded successfully." << endl;
+	}
+	catch (const exception& e)
+	{
+		// Print error to console and show that an error has occured on the screen.
+		cout << "\nWARNING: Unable to load DNN model, neural network inferencing will not work on the CPU with OpenCV." << "\n" << e.what() << endl;
+	}
+
+	/**************************************************************************
+				Load Neural Network Model for EdgeTPU ASIC processing.
+	**************************************************************************/
+	// Create model objects.
+	unique_ptr<tflite::FlatBufferModel> tfliteModel;
+	shared_ptr<edgetpu::EdgeTpuContext> edgetpuContext;
+	unique_ptr<tflite::Interpreter> tfliteModelInterpreter;
+	// Start loading yolo model.
+	try
+	{
+		// Attempt to open the tflite model.
+		cout << "Attempting to open EdgeTPU TFLITE model..." << endl;
+		tfliteModel = tflite::FlatBufferModel::BuildFromFile(string(YoloModelFilePath + "best.tflite").c_str());
+		cout << "EdgeTPU TFLITE Model is opened." << endl;
+		// Attempt to open CoralUSB Accelerator.
+		cout << "Attempting to open CoralUSB device..." << endl;
+		edgetpuContext = edgetpu::EdgeTpuManager::GetSingleton()->OpenDevice();
+		// Check if device was opened properly.
+		if (!edgetpuContext)
+		{
+			cout << "Unable to open CoralUSB device. Defualting to CPU Tensorflow interpreter." << endl;
+			tfliteModelInterpreter = BuildInterpreter(*tfliteModel);
+			cout << "WARNING: CPU Tensorflow interpreter has been loaded." << endl;
+		}
+		else
+		{
+			cout << "CoralUSB device has been opened..." << endl;
+			cout << "Attempting to load model onto device and create interpreter..." << endl;
+			// Create a Tensorflow interpreter with the opened model and the opened EdgeTPU device.
+			tfliteModelInterpreter = BuildEdgeTpuInterpreter(*tfliteModel, edgetpuContext.get());
+			cout << "SUCCESS: EdgeTPU Tensorflow interpreter has been loaded with CoralUSB device." << endl;
+		}		
+	}
+	catch (const exception& e)
+	{
+		// Print error to console and show that an error has occured on the screen.
+		cout << "\nWARNING: Unable to either open TFLITE model or load open EdgeTPU ASIC, neural network inferencing will not work for the CoralUSB Accelerator." << "\n" << e.what() << endl;
+	}
+
+	/**************************************************************************
 	 			Start Image Processing on Camera 0
-	 * ************************************************************************/
+	**************************************************************************/
 	if (cameraSinks.size() >= 1) 
 	{
 		// Create object pointers for threads.
@@ -663,31 +791,6 @@ int main(int argc, char* argv[])
 		vector<int> trackbarValues {1, 255, 1, 255, 1, 255};
 		vector<double> trackingResults {};
 		vector<double> solvePNPValues {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-
-
-		// Create DNN model object.
-		cv::dnn::Net onnxModel;
-		vector<string> classList;
-		// Start loading yolo model.
-		try
-		{
-			cout << "\nAttempting to load DNN model..." << endl;
-			onnxModel = cv::dnn::readNet(string(YoloModelOnnxFilePath + "best.onnx"));
-			cout << "DNN Model is loaded." << endl;
-			// Get class list.
-			ifstream ifs(string(YoloModelOnnxFilePath + "classes.txt"));
-			string line;
-			while (getline(ifs, line))
-			{
-				classList.push_back(line);
-			}
-			cout << "DNN class list loaded successfully." << endl;
-		}
-		catch (const exception& e)
-        {
-            // Print error to console and show that an error has occured on the screen.
-            cout << "\nWARNING: Unable to load DNN model, neural network inferencing will not work." << "\n" << e.what() << endl;
-        }
 
 		// Start classes multi-threading.
 		thread VideoGetThread(&VideoGet::StartCapture, &VideoGetter, ref(visionFrame), ref(leftStereoFrame), ref(rightStereoFrame), ref(cameraSourceIndex), ref(drivingMode), ref(cameraSinks), ref(VisionMutexGet), ref(StereoMutexGet));
