@@ -4,7 +4,6 @@
 #include <thread>
 #include <future>
 #include <mutex>
-#include <memory>
 #include <shared_mutex>
 #include <iostream>
 #include <fstream>
@@ -16,6 +15,7 @@
 #include "Headers/VideoProcess.h"
 #include "Headers/StereoProcess.h"
 #include "Headers/VideoShow.h"
+#include "Headers/ModelUtils.h"
 #include "../Resources/rapidjson/filereadstream.h"
 #include "../Resources/rapidjson/filewritestream.h"
 #include "../Resources/rapidjson/writer.h"
@@ -35,8 +35,6 @@
 #include <edgetpu.h>
 #include <tensorflow/lite/interpreter.h>
 #include <tensorflow/lite/model.h>
-#include <tensorflow/lite/builtin_op_data.h>
-#include <tensorflow/lite/kernels/register.h>
 
 using namespace cv;
 using namespace cs;
@@ -308,65 +306,6 @@ void StartCamera(const CameraConfig& config)
 	cameras.emplace_back(camera);
 	cameraSinks.emplace_back(cvSink);
 	cameraSources.emplace_back(cvSource);
-}
-
-/****************************************************************************
-		Description:	Build a EdgeTPU Interpreter to run inference with the
-						CoralUSB Accelerator.
-
-		Arguments: 		CONST FLATBUFFERMODEL, EDGETPUCONTEXT
-
-		Returns: 		UNIQUE_PTR<TFLITE::INTERPRETER> interpreter
-****************************************************************************/
-unique_ptr<tflite::Interpreter> BuildEdgeTpuInterpreter(const tflite::FlatBufferModel& model, edgetpu::EdgeTpuContext* edgetpuContext)
-{
-	// Create instance variables.
-	tflite::ops::builtin::BuiltinOpResolver resolver;
-	unique_ptr<tflite::Interpreter> interpreter;
-
-	// Create a resolver to delegate which operations are ran on the CPU or TPU.
-	resolver.AddCustom(edgetpu::kCustomOp, edgetpu::RegisterCustomOp());
-	// Build the Tensorflow Interpreter.
-	if (tflite::InterpreterBuilder(model, resolver)(&interpreter) != kTfLiteOk) {
-	cout << "Failed to build Tensorflow interpreter." << endl;
-	}
-
-	// Bind given context with interpreter.
-	interpreter->SetExternalContext(kTfLiteEdgeTpuContext, edgetpuContext);
-	interpreter->SetNumThreads(1);
-	if (interpreter->AllocateTensors() != kTfLiteOk) {
-	cout << "Failed to allocate tensors." << endl;
-	}
-
-	// Return pointer to built interpreter.
-	return interpreter;
-}
-
-/****************************************************************************
-		Description:	Build a Tensorflow Interpreter to run inference with the
-						with the CPU.
-
-		Arguments: 		CONST FLATBUFFERMODEL
-
-		Returns: 		UNIQUE_PTR<TFLITE::INTERPRETER> interpreter
-****************************************************************************/
-unique_ptr<tflite::Interpreter> BuildInterpreter(const tflite::FlatBufferModel& model)
-{
-  	// Create instance variables.
-	tflite::ops::builtin::BuiltinOpResolver resolver;
-	unique_ptr<tflite::Interpreter> interpreter;
-
-	// Build the Tensorflow Interpreter.
-	if (tflite::InterpreterBuilder(model, resolver)(&interpreter) != kTfLiteOk) {
-		std::cerr << "Failed to build interpreter." << std::endl;
-	}
-	interpreter->SetNumThreads(1);
-	if (interpreter->AllocateTensors() != kTfLiteOk) {
-		std::cerr << "Failed to allocate tensors." << std::endl;
-	}
-
-	// Return pointer to built interpreter.
-	return interpreter;
 }
 
 /****************************************************************************
@@ -727,7 +666,7 @@ int main(int argc, char* argv[])
 		{
 			cout << "Unable to open CoralUSB device. Defualting to CPU Tensorflow interpreter." << endl;
 			tfliteModelInterpreter = BuildInterpreter(*tfliteModel);
-			cout << "WARNING: CPU Tensorflow interpreter has been loaded." << endl;
+			cout << "WARNING: CPU Tensorflow interpreter has been loaded and is probably broken." << endl;
 		}
 		else
 		{
