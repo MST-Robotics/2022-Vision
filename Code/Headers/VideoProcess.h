@@ -42,14 +42,6 @@ using namespace nt;
 using namespace frc;
 using namespace wpi;
 using namespace std;
-
-// Define structs.
-struct Detection
-{
-    int classID;
-    float confidence;
-    Rect box;
-};
 ///////////////////////////////////////////////////////////////////////////////
 
 

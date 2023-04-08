@@ -26,11 +26,11 @@
 using namespace std;
 
 // Define structs.
-struct Object
+struct Detection
 {
-    Rect rec;
-    int      class_id;
-    float    score;
+    int classID;
+    float confidence;
+    Rect box;
 };
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -85,12 +85,12 @@ inline unique_ptr<tflite::Interpreter> BuildInterpreter(const tflite::FlatBuffer
 	// Build the Tensorflow Interpreter.
 	if (tflite::InterpreterBuilder(model, resolver)(&interpreter) != kTfLiteOk)
     {
-		std::cerr << "Failed to build interpreter." << std::endl;
+		cout << "Failed to build interpreter." << endl;
 	}
 	interpreter->SetNumThreads(1);
 	if (interpreter->AllocateTensors() != kTfLiteOk)
     {
-		std::cerr << "Failed to allocate tensors." << std::endl;
+		cout << "Failed to allocate tensors." << endl;
 	}
 
 	// Return pointer to built interpreter.
@@ -121,10 +121,12 @@ inline array<int, 3> GetInputShape(const tflite::Interpreter& interpreter, int i
 
     Returns: 		VECTOR<FLOAT>
 ****************************************************************************/
-inline vector<float> RunInference(const Mat& inputImage, tflite::Interpreter* interpreter)
+inline vector<Detection> RunInference(const Mat& inputImage, tflite::Interpreter* interpreter)
 {
     // Create instance variables.
-    vector<float> outputData;
+    vector<vector<uint8_t>> outputData;
+    vector<size_t> outputShapes;
+    vector<Detection> objects;
 
     // Check model size and make sure it matches the given input image.
     array<int, 3> shape = GetInputShape(*interpreter);
@@ -133,7 +135,7 @@ inline vector<float> RunInference(const Mat& inputImage, tflite::Interpreter* in
         // Create a vector input image mat into 1 dimension.
         vector<uint8_t> inputData(inputImage.begin<uint8_t>(), inputImage.end<uint8_t>());
         // Create a new tensor and copy our input data into it.
-        uint8_t* input = interpreter->typed_input_tensor<uint8_t>(0);
+        uint8_t* input = interpreter->typed_input_tensor<uint8_t>(interpreter->inputs()[0]);
         memcpy(input, inputData.data(), inputData.size());
 
         // Run inference.
@@ -143,51 +145,91 @@ inline vector<float> RunInference(const Mat& inputImage, tflite::Interpreter* in
         {
             cout << "Failed to run inference!!" << endl;
         }
-
-        // Get outputs.
-        const auto& outputIndices = interpreter->outputs();
-        const int numOutputs = outputIndices.size();
-        int outIdx = 0;
-
-        // Loop through output tensors and extract data.
-        for (int i = 0; i < numOutputs; ++i) 
+        else
         {
-            // Get tensor.
-            const auto* outTensor = interpreter->tensor(outputIndices[i]);
-            assert(outTensor != nullptr);
+            // Get outputs.
+            const auto& outputIndices = interpreter->outputs();
+            const int numOutputs = outputIndices.size();
+            // Set tensor output shape and resize output data to match.
+            outputShapes.resize(numOutputs);
+            outputData.resize(numOutputs);
 
-            // Check tensor type. UINT8 == TPU, FLOAT32 == GPU
-            if (outTensor->type == kTfLiteUInt8) 
+            // Loop through output tensors and extract data.
+            for (int i = 0; i < numOutputs; ++i) 
             {
-                // Get data out of tensor.
-                const int numValues = outTensor->bytes;
-                outputData.resize(outIdx + numValues);
-                const uint8_t* output = interpreter->typed_output_tensor<uint8_t>(i);
+                // Get tensor.
+                const auto* outTensor = interpreter->tensor(outputIndices[i]);
+                assert(outTensor != nullptr);
+                outputShapes[i] = outTensor->bytes / sizeof(uint8_t);
 
-                // Store data in more usable vector.
-                for (int j = 0; j < numValues; ++j) 
+                // Check tensor type. UINT8 == TPU, FLOAT32 == GPU
+                if (outTensor->type == kTfLiteUInt8) 
                 {
-                    outputData[outIdx++] = (output[j] - outTensor->params.zero_point) * outTensor->params.scale;
-                }
-            } 
-            else if (outTensor->type == kTfLiteFloat32)
-            {
-                // Get data out of tensor.
-                const int numValues = outTensor->bytes / sizeof(float);
-                outputData.resize(outIdx + numValues);
-                const float* output = interpreter->typed_output_tensor<float>(i);
+                    // Get data out of tensor.
+                    const int numValues = outTensor->bytes / sizeof(uint8_t);
+                    const uint8_t* output = interpreter->typed_output_tensor<uint8_t>(i);
+                    const size_t outputTensorSize = outputShapes[i];
+                    // Resize vector in output data to match.
+                    outputData[i].resize(outputTensorSize);
 
-                // Store data in more usable vector.
-                for (int j = 0; j < numValues; ++j)
+                    // Store data in more usable vector.
+                    for (int j = 0; j < numValues; ++j) 
+                    {
+                        outputData[i][j] = (output[j] - outTensor->params.zero_point) * outTensor->params.scale;
+                        // outputData[i][j] = output[j];
+                    }
+                } 
+                else if (outTensor->type == kTfLiteFloat32)
                 {
-                    outputData[outIdx++] = output[j];
+                    // Get data out of tensor.
+                    const int numValues = outTensor->bytes / sizeof(float);
+                    const float* output = interpreter->typed_output_tensor<float>(i);
+                    const size_t outputTensorSize = outputShapes[i];
+                    // Resize vector in output data to match.
+                    outputData[i].resize(outputTensorSize);
+
+                    // Store data in more usable vector.
+                    for (int j = 0; j < numValues; ++j) 
+                    {
+                        outputData[i][j] = (output[j] - outTensor->params.zero_point) * outTensor->params.scale;
+                        // outputData[i][j] = output[j];
+                    }
+                } 
+                else 
+                {
+                    // If Tensor is curropted or nonsensical.
+                    cout << "Tensor " << outTensor->name << " has unsupported output type: " << outTensor->type << endl;
                 }
-            } 
-            else 
-            {
-                // If Tensor is curropted or nonsensical.
-                cout << "Tensor " << outTensor->name << " has unsupported output type: " << outTensor->type << endl;
             }
+                
+            // Loop through locations and calulate rect coords for each, then store the calculated data into a new Object struct.
+            // int n = outputData[0].size();
+            // cout << "LENGTH: " << n << endl;
+            // for(int i = 0; i < n; i++)
+            // {
+            //     // Get the class id.
+            //     int id = lround(outputData[1][i]);
+            //     // Get detection score/confidence.
+            //     float score = outputData[2][i];
+            //     // Calculate bounding box location and scale to input image.
+            //     int ymin = outputData[0][4 * i] * inputImage.rows;
+            //     int xmin = outputData[0][4 * i + 1] * inputImage.cols;
+            //     int ymax = outputData[0][4 * i + 2] * inputImage.rows;
+            //     int xmax = outputData[0][4 * i + 3] * inputImage.cols;
+            //     int width = xmax - xmin;
+            //     int height = ymax - ymin;
+                
+            //     // Create name object variable and store info inside of it.
+            //     Detection object;
+            //     object.classID = id;
+            //     object.box.x = xmin;
+            //     object.box.y = ymin;
+            //     object.box.width = width;
+            //     object.box.height = height;
+            //     object.confidence = score;
+            //     // cout << "SCORE" << ymin << endl;
+            //     // objects.push_back(object);
+            // }
         }
     }
     else
@@ -197,7 +239,7 @@ inline vector<float> RunInference(const Mat& inputImage, tflite::Interpreter* in
     }
 
     // Return result vector.
-    return outputData;
+    return objects;
 }
 ///////////////////////////////////////////////////////////////////////////////
 #endif

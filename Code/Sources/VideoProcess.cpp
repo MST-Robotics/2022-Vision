@@ -94,7 +94,6 @@ void VideoProcess::Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &t
     // Give other threads enough time to start before processing camera frames.
     this_thread::sleep_for(std::chrono::milliseconds(800));
 
-    Mat test(640, 640, CV_8U, 1);
     // Processing loop for main vision.
     while (1)
     {
@@ -448,15 +447,12 @@ void VideoProcess::Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &t
                         *****************************************************/
                         case FISH_TRACKING:
                         {
-                            resize(frame, test, Size(640, 640));
+                            // Get model size.
+                            static array<int, 3> shape = GetInputShape(*tfliteModelInterpreter);
+                            // Resize frame to match model size.
+                            resize(frame, frame, Size(shape[0], shape[1]));
                             // Test inference.
-                            vector<float> inferenceResult = RunInference(test, tfliteModelInterpreter.get());
-
-                            for (float num : inferenceResult)
-                            {
-                                cout << num << " ";
-                            }
-                            cout << endl;
+                            vector<Detection> inferenceResult = RunInference(frame, tfliteModelInterpreter.get());
 
                             // // Calculate the frame width, length, and max size.
                             // int frameWidth = frame.cols;
