@@ -15,7 +15,6 @@
 #include "Headers/VideoProcess.h"
 #include "Headers/StereoProcess.h"
 #include "Headers/VideoShow.h"
-#include "Headers/ModelUtils.h"
 #include "../Resources/rapidjson/filereadstream.h"
 #include "../Resources/rapidjson/filewritestream.h"
 #include "../Resources/rapidjson/writer.h"
@@ -91,7 +90,7 @@ using namespace rapidjson;
 static const char* configFile = "/boot/frc.json";
 static const char* VisionTuningFilePath = "/home/pi/2022-Vision/Code/trackbar_values.json";
 static const char* StereoCameraParamsPath = "/home/pi/2022-Vision/Code/stereo_params.json";
-static const string YoloModelFilePath = "/home/pi/2022-Vision/YOLO_Models/COCO_v5n_Test/";
+static const string YoloModelFilePath = "/home/pi/2022-Vision/YOLO_Models/2022-0407_MarsRoverCustomModel/weights/";
 
 // Create namespace variables, stucts, and objects.
 unsigned int team;
@@ -733,7 +732,7 @@ int main(int argc, char* argv[])
 
 		// Start classes multi-threading.
 		thread VideoGetThread(&VideoGet::StartCapture, &VideoGetter, ref(visionFrame), ref(leftStereoFrame), ref(rightStereoFrame), ref(cameraSourceIndex), ref(drivingMode), ref(cameraSinks), ref(VisionMutexGet), ref(StereoMutexGet));
-		thread VideoProcessThread(&VideoProcess::Process, &VideoProcessor, ref(visionFrame), ref(finalImg), ref(targetCenterX), ref(targetCenterY), ref(centerLineTolerance), ref(contourAreaMinLimit), ref(contourAreaMaxLimit), ref(tuningMode), ref(drivingMode), ref(trackingMode), ref(takeShapshot), ref(enableSolvePNP), ref(trackbarValues), ref(trackingResults), ref(solvePNPValues), ref(classList), ref(onnxModel), ref(VideoGetter), ref(VisionMutexGet), ref(VisionMutexShow));
+		thread VideoProcessThread(&VideoProcess::Process, &VideoProcessor, ref(visionFrame), ref(finalImg), ref(targetCenterX), ref(targetCenterY), ref(centerLineTolerance), ref(contourAreaMinLimit), ref(contourAreaMaxLimit), ref(tuningMode), ref(drivingMode), ref(trackingMode), ref(takeShapshot), ref(enableSolvePNP), ref(trackbarValues), ref(trackingResults), ref(solvePNPValues), ref(classList), ref(onnxModel), ref(tfliteModelInterpreter), ref(VideoGetter), ref(VisionMutexGet), ref(VisionMutexShow));
 		thread StereoProcessThread(&StereoProcess::Process, &StereoProcessor, ref(leftStereoFrame), ref(rightStereoFrame), ref(stereoImg), ref(enableStereoVision), ref(VideoGetter), ref(StereoMutexGet), ref(StereoMutexShow));
 		thread VideoShowerThread(&VideoShow::ShowFrame, &VideoShower, ref(finalImg), ref(stereoImg), ref(cameraSources), ref(VisionMutexShow), ref(StereoMutexShow));
 		
@@ -1090,6 +1089,12 @@ int main(int argc, char* argv[])
 		// Print message if no cameras have been detected.
 		cout << "No cameras were detected or no configs have been given from the dashboard." << endl;
 	}
+
+	// Close the interpreter and EdgeTPU.
+	cout << "Closing Tensorflow Interpreter..." << endl;
+	tfliteModelInterpreter.reset();
+	cout << "Closing the EdgeTPU device..." << endl;
+	edgetpuContext.reset();
 
 	// Print kill message.
 	cout << "Program stopped." << endl;

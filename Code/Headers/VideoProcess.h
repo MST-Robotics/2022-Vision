@@ -21,6 +21,7 @@
 #include <math.h>
 
 #include "VideoGet.h"
+#include "ModelUtils.h"
 #include "FPS.h"
 
 #include <opencv2/highgui/highgui.hpp>
@@ -33,6 +34,7 @@
 #include <wpi/raw_istream.h>
 #include <wpi/raw_ostream.h>
 #include <cameraserver/CameraServer.h>
+#include <tensorflow/lite/interpreter.h>
 
 using namespace cv;
 using namespace cs;
@@ -57,7 +59,7 @@ public:
     // Declare class methods.
     VideoProcess();
     ~VideoProcess();
-    void Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &targetCenterY, int &centerLineTolerance, double &contourAreaMinLimit, double &contourAreaMaxLimit, bool &tuningMode, bool &drivingMode, int &trackingMode, bool &takeShapshot, bool &solvePNPEnabled, vector<int> &trackbarValues, vector<double> &trackingResults, vector<double> &solvePNPValues, vector<string> &classList, cv::dnn::Net &onnxModel, VideoGet &VideoGetter, shared_timed_mutex &MutexGet, shared_timed_mutex &MutexShow);
+    void Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &targetCenterY, int &centerLineTolerance, double &contourAreaMinLimit, double &contourAreaMaxLimit, bool &tuningMode, bool &drivingMode, int &trackingMode, bool &takeShapshot, bool &solvePNPEnabled, vector<int> &trackbarValues, vector<double> &trackingResults, vector<double> &solvePNPValues, vector<string> &classList, cv::dnn::Net &onnxModel, unique_ptr<tflite::Interpreter> &tfliteModelInterpreter, VideoGet &VideoGetter, shared_timed_mutex &MutexGet, shared_timed_mutex &MutexShow);
     vector<double> SolveObjectPose(vector<Point2f> imagePoints, Mat &finalImg, Mat &frame, int targetPositionX, int targetPositionY);
     int SignNum(double val);
     void SetIsStopping(bool isStopping);

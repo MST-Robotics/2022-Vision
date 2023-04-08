@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 8
+names: ['ar_tag', 'boulder', 'fence', 'odd_ledge', 'person', 'shrubbery', 'tree', 'tree_stump']
+
+roboflow:
+  workspace: mars-rover-object-detection-yolo
+  project: object-detection-pfrru
+  version: 20
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/mars-rover-object-detection-yolo/object-detection-pfrru/dataset/20

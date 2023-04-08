@@ -160,17 +160,26 @@ int main(int argc, char* argv[]) {
     std::abort();
   }
   // Print inference result.
-  const auto& result = coral::RunInference(input, interpreter.get());
-  // Get Label
-  const auto& label = coral::ParseLabel(label_path);
-  size_t idx = 0;
-  std::for_each(result.cbegin(), result.cend(), [&](const float& score) {
-    if (score != 0) {
-      std::cout << "------\n";
-      std::cout << "Class: " << label.at(idx) << "\nScore: " << score << "\n";
+  for (int i = 0; i < 1000; i++)
+  {
+    std::cout << "Running inference on the same image 1000 times." << std::endl;
+    const auto& result = coral::RunInference(input, interpreter.get());
+
+    // Check if we are on last iteration.
+    if (i >= 999)
+    {
+      // Get Label
+      const auto& label = coral::ParseLabel(label_path);
+      size_t idx = 0;
+      std::for_each(result.cbegin(), result.cend(), [&](const float& score) {
+        if (score != 0) {
+          std::cout << "------\n";
+          std::cout << "Class: " << label.at(idx) << "\nScore: " << score << "\n";
+        }
+        idx++;
+      });
     }
-    idx++;
-  });
+  }
 
   return 0;
 }
