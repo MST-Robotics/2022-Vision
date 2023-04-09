@@ -281,12 +281,10 @@ inline vector<vector<Detection>> RunInference(Mat& inputImage, tflite::Interpret
                         minMaxLoc(scores, 0, &maxClassScore, 0, &classID);
                         int id = classID.x;
                         // Calculate bounding box location and scale to input image.
-                        int ymin = outputData[i][j][0] * inputImage.rows;
-                        int xmin = outputData[i][j][1] * inputImage.cols;
-                        int ymax = outputData[i][j][2] * inputImage.rows;
-                        int xmax = outputData[i][j][3] * inputImage.cols;
-                        int width = xmax - xmin;
-                        int height = ymax - ymin;
+                        int xmin = outputData[i][j][0] * originalInputImageWidth;
+                        int ymin = outputData[i][j][1] * originalInputImageHeight;
+                        int width = outputData[i][j][2] * originalInputImageWidth;
+                        int height = outputData[i][j][3] * originalInputImageHeight;
                         
                         // Create name object variable and store info inside of it.
                         Detection object;

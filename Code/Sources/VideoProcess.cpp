@@ -554,7 +554,7 @@ void VideoProcess::Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &t
                                     cout << "CLASSID: " << finalDetections[0].classID << endl;
                                     rectangle(finalImg, detectionBox, color, 3);
                                     rectangle(finalImg, Point(detectionBox.x, detectionBox.y - 20), Point(detectionBox.x + detectionBox.width, detectionBox.y), color, FILLED);
-                                    putText(finalImg, classList[classID].c_str(), Point(detectionBox.x, detectionBox.y - 5), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0));
+                                    putText(finalImg, string(classList[classID].c_str()) + " " + to_string(confidence), Point(detectionBox.x, detectionBox.y - 5), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0));
                                 }
                             }
 
