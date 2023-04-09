@@ -70,7 +70,9 @@ $ rm tensorflow.zip
 //  GENERATE EDGETPU MODEL FROM TFLITE MODEL (8-bit QUANTIZED)
 ////////////////////////////////////////////////////////////////////////////////////////
 # First convert yolo.pt model to tflite. Use export script in yolov5 repo to make it compatible with edgetpu.
-$ python.exe .\export.py --weights .\datasets\2022-0407_MarsRoverCustomModel\weights\best.pt --img-size 640 --include edgetpu 
+$ python.exe .\export.py --weights .\datasets\2022-0407_MarsRoverCustomModel\weights\best.pt --img-size 640 --include edgetpu
+
+#### ONLY NEEDED IF THE export.py DIDN'T WORK.
 # Next 8-bit Quantize the model to run on the EdgeTPU hardware.
 $ curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
 $ echo "deb https://packages.cloud.google.com/apt coral-edgetpu-stable main" | sudo tee /etc/apt/sources.list.d/coral-edgetpu.list

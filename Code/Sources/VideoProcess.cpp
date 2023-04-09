@@ -491,16 +491,12 @@ void VideoProcess::Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &t
                                 for (Detection detection : finalDetections)
                                 {
                                     // Get detection info.
-                                    int classID = detection.classID;
-                                    float confidence = detection.confidence;
-                                    Rect detectionBox = detection.box;
-                                    Scalar color = DETECTION_COLORS[classID % DETECTION_COLORS.size()];
+                                    Scalar color = DETECTION_COLORS[detection.classID % DETECTION_COLORS.size()];
 
                                     // Draw detection
-                                    cout << "CLASSID: " << finalDetections[0].classID << endl;
-                                    rectangle(finalImg, detectionBox, color, 3);
-                                    rectangle(finalImg, Point(detectionBox.x, detectionBox.y - 20), Point(detectionBox.x + detectionBox.width, detectionBox.y), color, FILLED);
-                                    putText(finalImg, string(classList[classID].c_str()) + " " + to_string(confidence), Point(detectionBox.x, detectionBox.y - 5), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0));
+                                    rectangle(finalImg, detection.box, color, 3);
+                                    rectangle(finalImg, Point(detection.box.x, detection.box.y - 20), Point(detection.box.x + detection.box.width, detection.box.y), color, FILLED);
+                                    putText(finalImg, string(classList[detection.classID].c_str()) + " " + to_string(detection.confidence), Point(detection.box.x, detection.box.y - 5), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0));
                                 }
                             }
                             else
@@ -523,13 +519,11 @@ void VideoProcess::Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &t
                                     }
                                 }
 
-                                cout << "INFERENCE RESULT LENGTH: " << predictionBoxes.size() << endl;
 
                                 // Remove duplicate detections/average them out.
                                 vector<int> NMSResults;
                                 vector<Detection> finalDetections;
                                 cv::dnn::NMSBoxes(predictionBoxes, confidences, neuralNetworkMinConfidence, DNN_NMS_THRESH, NMSResults);
-                                cout << "NMS SIZE: " << NMSResults.size() << endl;
                                 for (int i = 0; i < NMSResults.size(); i++) 
                                 {
                                     int idx = NMSResults[i];
@@ -544,17 +538,12 @@ void VideoProcess::Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &t
                                 for (Detection detection : finalDetections)
                                 {
                                     // Get detection info.
-                                    int classID = detection.classID;
-                                    float confidence = detection.confidence;
-                                    Rect detectionBox = detection.box;
-                                    Scalar color = DETECTION_COLORS[classID % DETECTION_COLORS.size()];
+                                    Scalar color = DETECTION_COLORS[detection.classID % DETECTION_COLORS.size()];
 
                                     // Draw detection
-                                    cout << "FINALDETECTION BOX: " << finalDetections[0].box.x << " " << finalDetections[0].box.y << " " << finalDetections[0].box.width << " " << finalDetections[0].box.height << endl;
-                                    cout << "CLASSID: " << finalDetections[0].classID << endl;
-                                    rectangle(finalImg, detectionBox, color, 3);
-                                    rectangle(finalImg, Point(detectionBox.x, detectionBox.y - 20), Point(detectionBox.x + detectionBox.width, detectionBox.y), color, FILLED);
-                                    putText(finalImg, string(classList[classID].c_str()) + " " + to_string(confidence), Point(detectionBox.x, detectionBox.y - 5), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0));
+                                    rectangle(finalImg, detection.box, color, 3);
+                                    rectangle(finalImg, Point(detection.box.x, detection.box.y - 20), Point(detection.box.x + detection.box.width, detection.box.y), color, FILLED);
+                                    putText(finalImg, string(classList[detection.classID].c_str()) + " " + to_string(detection.confidence), Point(detection.box.x, detection.box.y - 5), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0));
                                 }
                             }
 
