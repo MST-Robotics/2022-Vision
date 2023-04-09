@@ -443,30 +443,42 @@ void VideoProcess::Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &t
                         }
 
                         /****************************************************
-                        *	Track dead and alive fish with YOLO neural network
+                        *	Detect objects with YOLO neural network
                         *****************************************************/
                         case FISH_TRACKING:
                         {
+                            // Clamp confidence thresh value.
+                            neuralNetworkMinConfidence = clamp(neuralNetworkMinConfidence, 0.01f, 0.99f);
+
                             // Create instance variables.
                             vector<vector<Detection>> inferenceResult;
                             // Check if ONNX model use is forced.
                             if (forceONNXModel)
                             {
                                 // Run inference on CPU on ONNX model.
-                                inferenceResult = RunONNXInference(frame, onnxModel, neuralNetworkMinConfidence, DNN_MODEL_IMAGE_SIZE);
-                            }
-                            else
-                            {
-                                // Run inference on EdgeTPU on TFLITE model.
-                                inferenceResult = RunInference(*frame, tfliteModelInterpreter.get(), neuralNetworkMinConfidence);
+                                inferenceResult = RunONNXInference(frame, onnxModel, neuralNetworkMinConfidence, DNN_MODEL_IMAGE_SIZE, classList.size());
 
-                                // 
+                                // Pull out bboxes and confidences into their own vectors.
+                                vector<int> classIDs;
+                                vector<float> confidences;
+                                vector<Rect> predictionBoxes;
+                                for (vector<Detection> detections : inferenceResult)
+                                {
+                                    for (Detection detection : detections)
+                                    {
+                                        // Get IDs, confs, and bounding boxes for each detected object.
+                                        classIDs.push_back(detection.classID);
+                                        confidences.push_back(detection.confidence);
+                                        predictionBoxes.push_back(detection.box);
+                                    }
+                                }
 
                                 // Remove duplicate detections/average them out.
                                 vector<int> NMSResults;
                                 vector<Detection> finalDetections;
-                                cv::dnn::NMSBoxes(predictionBoxes, confidences, DNN_MINIMUM_CLASS_SCORE, DNN_NMS_THRESH, NMSResults);
-                                for (int i = 0; i < NMSResults.size(); i++) {
+                                cv::dnn::NMSBoxes(predictionBoxes, confidences, neuralNetworkMinConfidence, DNN_NMS_THRESH, NMSResults);
+                                for (int i = 0; i < NMSResults.size(); i++) 
+                                {
                                     int idx = NMSResults[i];
                                     Detection result;
                                     result.classID = classIDs[idx];
@@ -485,6 +497,61 @@ void VideoProcess::Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &t
                                     Scalar color = DETECTION_COLORS[classID % DETECTION_COLORS.size()];
 
                                     // Draw detection
+                                    cout << "CLASSID: " << finalDetections[0].classID << endl;
+                                    rectangle(finalImg, detectionBox, color, 3);
+                                    rectangle(finalImg, Point(detectionBox.x, detectionBox.y - 20), Point(detectionBox.x + detectionBox.width, detectionBox.y), color, FILLED);
+                                    putText(finalImg, string(classList[classID].c_str()) + " " + to_string(confidence), Point(detectionBox.x, detectionBox.y - 5), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0));
+                                }
+                            }
+                            else
+                            {
+                                // Run inference on EdgeTPU on TFLITE model.
+                                inferenceResult = RunInference(frame, tfliteModelInterpreter.get(), neuralNetworkMinConfidence);
+
+                                // Pull out bboxes and confidences into their own vectors.
+                                vector<int> classIDs;
+                                vector<float> confidences;
+                                vector<Rect> predictionBoxes;
+                                for (vector<Detection> detections : inferenceResult)
+                                {
+                                    for (Detection detection : detections)
+                                    {
+                                        // Get IDs, confs, and bounding boxes for each detected object.
+                                        classIDs.push_back(detection.classID);
+                                        confidences.push_back(detection.confidence);
+                                        predictionBoxes.push_back(detection.box);
+                                    }
+                                }
+
+                                cout << "INFERENCE RESULT LENGTH: " << predictionBoxes.size() << endl;
+
+                                // Remove duplicate detections/average them out.
+                                vector<int> NMSResults;
+                                vector<Detection> finalDetections;
+                                cv::dnn::NMSBoxes(predictionBoxes, confidences, neuralNetworkMinConfidence, DNN_NMS_THRESH, NMSResults);
+                                cout << "NMS SIZE: " << NMSResults.size() << endl;
+                                for (int i = 0; i < NMSResults.size(); i++) 
+                                {
+                                    int idx = NMSResults[i];
+                                    Detection result;
+                                    result.classID = classIDs[idx];
+                                    result.confidence = confidences[idx];
+                                    result.box = predictionBoxes[idx];
+                                    finalDetections.push_back(result);
+                                }
+
+                                // Loop through the detections and draw overlay onto final image.
+                                for (Detection detection : finalDetections)
+                                {
+                                    // Get detection info.
+                                    int classID = detection.classID;
+                                    float confidence = detection.confidence;
+                                    Rect detectionBox = detection.box;
+                                    Scalar color = DETECTION_COLORS[classID % DETECTION_COLORS.size()];
+
+                                    // Draw detection
+                                    cout << "FINALDETECTION BOX: " << finalDetections[0].box.x << " " << finalDetections[0].box.y << " " << finalDetections[0].box.width << " " << finalDetections[0].box.height << endl;
+                                    cout << "CLASSID: " << finalDetections[0].classID << endl;
                                     rectangle(finalImg, detectionBox, color, 3);
                                     rectangle(finalImg, Point(detectionBox.x, detectionBox.y - 20), Point(detectionBox.x + detectionBox.width, detectionBox.y), color, FILLED);
                                     putText(finalImg, classList[classID].c_str(), Point(detectionBox.x, detectionBox.y - 5), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0));

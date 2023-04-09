@@ -217,7 +217,7 @@ inline vector<vector<Detection>> RunInference(Mat& inputImage, tflite::Interpret
                         {
                             // Get actual data stored in tensor and scale it.
                             outputData[i][j][k] = (output[totalNumValuesCounter] - outTensor->params.zero_point) * outTensor->params.scale;
-                            // outputData[i][j][k] = output[j];
+                            // outputData[i][j][k] = output[totalNumValuesCounter];
 
                             // Increment counter.
                             totalNumValuesCounter++;
@@ -247,7 +247,7 @@ inline vector<vector<Detection>> RunInference(Mat& inputImage, tflite::Interpret
                         {
                             // Get actual data stored in tensor and scale it.
                             outputData[i][j][k] = (output[totalNumValuesCounter] - outTensor->params.zero_point) * outTensor->params.scale;
-                            // outputData[i][j][k] = output[j];
+                            // outputData[i][j][k] = output[totalNumValuesCounter];
 
                             // Increment counter.
                             totalNumValuesCounter++;
@@ -267,7 +267,7 @@ inline vector<vector<Detection>> RunInference(Mat& inputImage, tflite::Interpret
             // Detections have format {xmin, ymin, width, height, conf, class0, class1, ...}
             for (int i = 0; i < outputData.size(); ++i)
             {
-                for (int j = 0; j < outputData[0].size(); ++j)
+                for (int j = 0; j < outputData[i].size(); ++j)
                 {
                     // Get detection score/confidence.
                     float predConfidence = outputData[i][j][4];
@@ -277,14 +277,14 @@ inline vector<vector<Detection>> RunInference(Mat& inputImage, tflite::Interpret
                         // Get the class id.
                         Point classID;
                         double maxClassScore = 0;
-                        Mat scores(1, 100, CV_32FC1, &(outputData[i][j][5]));
+                        Mat scores(1, (outputData[i][j].size() - 5), CV_32FC1, &(outputData[i][j][5]));
                         minMaxLoc(scores, 0, &maxClassScore, 0, &classID);
                         int id = classID.x;
                         // Calculate bounding box location and scale to input image.
-                        int ymin = outputData[i][j][0] * (originalInputImageHeight / inputImage.rows);
-                        int xmin = outputData[i][j][1] * (originalInputImageWidth / inputImage.cols);
-                        int ymax = outputData[i][j][2] * (originalInputImageHeight / inputImage.rows);
-                        int xmax = outputData[i][j][3] * (originalInputImageWidth / inputImage.cols);
+                        int ymin = outputData[i][j][0] * inputImage.rows;
+                        int xmin = outputData[i][j][1] * inputImage.cols;
+                        int ymax = outputData[i][j][2] * inputImage.rows;
+                        int xmax = outputData[i][j][3] * inputImage.cols;
                         int width = xmax - xmin;
                         int height = ymax - ymin;
                         
@@ -345,7 +345,7 @@ inline vector<vector<Detection>> RunInference(Mat& inputImage, tflite::Interpret
 
     Returns: 		VECTOR<FLOAT>
 ****************************************************************************/
-inline vector<vector<Detection>> RunONNXInference(const Mat &inputImage, cv::dnn::Net &onnxModel, float confidence, int modelImgSize)
+inline vector<vector<Detection>> RunONNXInference(const Mat &inputImage, cv::dnn::Net &onnxModel, float confidence, int modelImgSize, int classListSize)
 {
     // Create instance variables.
     vector<vector<Detection>> objects;
@@ -388,14 +388,14 @@ inline vector<vector<Detection>> RunONNXInference(const Mat &inputImage, cv::dnn
     for (int i = 0; i < 25200; ++i) 
     {
         // Get the current prediction confidence.
-        float confidence = data[4];
+        float detectionConf = data[4];
 
         // Check if the confidence is above a certain threashold.
-        if (confidence >= confidence) 
+        if (detectionConf >= confidence) 
         {
             // Get just the class scores from the data array. Stupid tricky pointer manipulation, look out. Cuts off x, y, width, height, conf.
             float *classesScores = data + 5;
-            Mat scores(1, 100, CV_32FC1, classesScores);
+            Mat scores(1, classListSize, CV_32FC1, classesScores);
             // Find the class id with the max score for each detection.
             Point classID;
             double maxClassScore = 0;
@@ -418,11 +418,14 @@ inline vector<vector<Detection>> RunONNXInference(const Mat &inputImage, cv::dnn
             object.box.y = top;
             object.box.width = width;
             object.box.height = height;
-            object.confidence = confidence;
+            object.confidence = detectionConf;
             object.classID = classID.x;
             // Add Detection struct to objects vector.
             objects[0].emplace_back(object);
         }
+
+        // Completely wrap offset data array by the total length of one row.
+        data += classListSize + 5;
     }
 
     // Return detected objects.

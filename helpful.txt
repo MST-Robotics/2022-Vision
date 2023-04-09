@@ -31,3 +31,6 @@ ffmpeg -stream_loop -1 -re -i vid2.mp4 -map 0:v -f v4l2 /dev/video0
 
 // If apt give tmp errors.
 sudo chmod 1777 /tmp
+
+// Convert .pt YOLOv5 Model to ONNX.
+python.exe .\export.py --weights .\datasets\2022-0407_MarsRoverCustomModel\weights\best.pt --img-size 640 --include onnx --opset 12
