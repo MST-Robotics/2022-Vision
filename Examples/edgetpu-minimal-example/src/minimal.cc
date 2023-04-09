@@ -159,10 +159,36 @@ int main(int argc, char* argv[]) {
               << required_shape[2] << std::endl;
     std::abort();
   }
+
+  // Print Useful model info.
+  std::cout << "----------------------------------------------------" << std::endl;
+  std::cout << "inputs : " << interpreter->inputs().size() << "\n";
+  std::cout << "inputs(0) name : " << interpreter->GetInputName(0) << "\n";
+  std::cout << "tensors size: " << interpreter->tensors_size() << "\n";
+  std::cout << "nodes size: " << interpreter->nodes_size() << "\n";
+  int startinput = clock();
+  int inputInfo = interpreter->inputs()[0];
+  std::cout << "input.1 : " << inputInfo <<"\n";
+  const std::vector<int> inputs = interpreter->inputs();
+  const std::vector<int> outputs = interpreter->outputs();
+  std::cout << "number of inputs: " << inputs.size() << "\n";
+  std::cout << "number of outputs: " << outputs.size() << "\n";
+
+  TfLiteIntArray* dims = interpreter->tensor(inputInfo)->dims;
+  int test0 = dims->data[0];
+  int wanted_channels = dims->data[1];
+  int wanted_height = dims->data[2];
+  int wanted_width = dims->data[3];
+  int test4 = dims->data[4];
+  int test5 = dims->data[5];
+  int test6 = dims->data[6];
+  std::cout << "type of input tensor: " << interpreter->tensor(inputInfo)->type << std::endl;
+  std::cout << "height, width, channels of input : " << wanted_height << " " << wanted_width << " "<< wanted_channels <<  " " << test0 << " " << test4 << " " << test5 << " " << test6 << std::endl;
+
+  std::cout << "Running inference on the same image 1000 times." << std::endl;
   // Print inference result.
   for (int i = 0; i < 1000; i++)
   {
-    std::cout << "Running inference on the same image 1000 times." << std::endl;
     const auto& result = coral::RunInference(input, interpreter.get());
 
     // Check if we are on last iteration.

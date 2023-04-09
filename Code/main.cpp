@@ -584,10 +584,12 @@ int main(int argc, char* argv[])
 	NetworkTable->PutBoolean("Take Shapshot", false);
 	NetworkTable->PutBoolean("Enable SolvePNP", false);
 	NetworkTable->PutBoolean("Enable StereoVision", false);
+	NetworkTable->PutBoolean("Force ONNX Model", false);
 	NetworkTable->PutNumber("X Setpoint Offset", 0);
 	NetworkTable->PutNumber("Contour Area Min Limit", 1211);
 	NetworkTable->PutNumber("Contour Area Max Limit", 2000);
 	NetworkTable->PutNumber("Center Line Tolerance", 50);
+	NetworkTable->PutNumber("Neural Net Min Confidence", 0.4);
 	NetworkTable->PutNumber("HMN", 48);
 	NetworkTable->PutNumber("HMX", 104);
 	NetworkTable->PutNumber("SMN", 0);
@@ -715,6 +717,7 @@ int main(int argc, char* argv[])
 		int centerLineTolerance = 0;
 		double contourAreaMinLimit = 0;
 		double contourAreaMaxLimit = 0;
+		float neuralNetworkMinConfidence = 0.4;
 		bool writeJSON = false;
 		bool stopProgam = false;
 		bool cameraSourceIndex = false;
@@ -723,6 +726,7 @@ int main(int argc, char* argv[])
 		bool takeShapshot = false;
 		bool enableSolvePNP = false;
 		bool enableStereoVision = false;
+		bool forceONNXModel = false;
 		bool valsSet = false;
 		int trackingMode = VideoProcess::LINE_TRACKING;
 		int selectionState = LINE;
@@ -732,7 +736,7 @@ int main(int argc, char* argv[])
 
 		// Start classes multi-threading.
 		thread VideoGetThread(&VideoGet::StartCapture, &VideoGetter, ref(visionFrame), ref(leftStereoFrame), ref(rightStereoFrame), ref(cameraSourceIndex), ref(drivingMode), ref(cameraSinks), ref(VisionMutexGet), ref(StereoMutexGet));
-		thread VideoProcessThread(&VideoProcess::Process, &VideoProcessor, ref(visionFrame), ref(finalImg), ref(targetCenterX), ref(targetCenterY), ref(centerLineTolerance), ref(contourAreaMinLimit), ref(contourAreaMaxLimit), ref(tuningMode), ref(drivingMode), ref(trackingMode), ref(takeShapshot), ref(enableSolvePNP), ref(trackbarValues), ref(trackingResults), ref(solvePNPValues), ref(classList), ref(onnxModel), ref(tfliteModelInterpreter), ref(VideoGetter), ref(VisionMutexGet), ref(VisionMutexShow));
+		thread VideoProcessThread(&VideoProcess::Process, &VideoProcessor, ref(visionFrame), ref(finalImg), ref(targetCenterX), ref(targetCenterY), ref(centerLineTolerance), ref(contourAreaMinLimit), ref(contourAreaMaxLimit), ref(tuningMode), ref(drivingMode), ref(trackingMode), ref(takeShapshot), ref(enableSolvePNP), ref(trackbarValues), ref(trackingResults), ref(solvePNPValues), ref(classList), ref(onnxModel), ref(tfliteModelInterpreter), ref(neuralNetworkMinConfidence), ref(forceONNXModel), ref(VideoGetter), ref(VisionMutexGet), ref(VisionMutexShow));
 		thread StereoProcessThread(&StereoProcess::Process, &StereoProcessor, ref(leftStereoFrame), ref(rightStereoFrame), ref(stereoImg), ref(enableStereoVision), ref(VideoGetter), ref(StereoMutexGet), ref(StereoMutexShow));
 		thread VideoShowerThread(&VideoShow::ShowFrame, &VideoShower, ref(finalImg), ref(stereoImg), ref(cameraSources), ref(VisionMutexShow), ref(StereoMutexShow));
 		
@@ -753,6 +757,20 @@ int main(int argc, char* argv[])
 					bool lineMode = NetworkTable->GetBoolean("Line Tracking Mode", false);
 					bool fishMode = NetworkTable->GetBoolean("Fish Tracking Mode", true);
 					bool tapeMode = NetworkTable->GetBoolean("Tape Tracking Mode", false);
+					takeShapshot = NetworkTable->GetBoolean("Take Shapshot", false);
+					enableSolvePNP = NetworkTable->GetBoolean("Enable SolvePNP", false);
+					enableStereoVision = NetworkTable->GetBoolean("Enable StereoVision", false);
+					forceONNXModel = NetworkTable->GetBoolean("Force ONNX Model", false);
+					centerLineTolerance = NetworkTable->GetNumber("Center Line Tolerance", 50);
+					contourAreaMinLimit = NetworkTable->GetNumber("Contour Area Min Limit", 1211.0);
+					contourAreaMaxLimit = NetworkTable->GetNumber("Contour Area Max Limit", 2000);
+					neuralNetworkMinConfidence = NetworkTable->GetNumber("Neural Net Min Confidence", 0.4);
+					trackbarValues[0] = int(NetworkTable->GetNumber("HMN", 1));
+					trackbarValues[1] = int(NetworkTable->GetNumber("HMX", 255));
+					trackbarValues[2] = int(NetworkTable->GetNumber("SMN", 1));
+					trackbarValues[3] = int(NetworkTable->GetNumber("SMX", 255));
+					trackbarValues[4] = int(NetworkTable->GetNumber("VMN", 1));
+					trackbarValues[5] = int(NetworkTable->GetNumber("VMX", 255));
 					// Tracking mode selection state logic.
 					switch (selectionState)
 					{
@@ -988,18 +1006,6 @@ int main(int argc, char* argv[])
 							}
 							break;
 					}
-					takeShapshot = NetworkTable->GetBoolean("Take Shapshot", false);
-					enableSolvePNP = NetworkTable->GetBoolean("Enable SolvePNP", false);
-					enableStereoVision = NetworkTable->GetBoolean("Enable StereoVision", false);
-					centerLineTolerance = NetworkTable->GetNumber("Center Line Tolerance", 50);
-					contourAreaMinLimit = NetworkTable->GetNumber("Contour Area Min Limit", 1211.0);
-					contourAreaMaxLimit = NetworkTable->GetNumber("Contour Area Max Limit", 2000);
-					trackbarValues[0] = int(NetworkTable->GetNumber("HMN", 1));
-					trackbarValues[1] = int(NetworkTable->GetNumber("HMX", 255));
-					trackbarValues[2] = int(NetworkTable->GetNumber("SMN", 1));
-					trackbarValues[3] = int(NetworkTable->GetNumber("SMX", 255));
-					trackbarValues[4] = int(NetworkTable->GetNumber("VMN", 1));
-					trackbarValues[5] = int(NetworkTable->GetNumber("VMX", 255));
 
 					// Put NetworkTables data.
 					NetworkTable->PutNumber("Target Center X", (targetCenterX + int(NetworkTable->GetNumber("X Setpoint Offset", 0))));

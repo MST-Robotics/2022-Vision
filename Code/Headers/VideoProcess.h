@@ -51,7 +51,7 @@ public:
     // Declare class methods.
     VideoProcess();
     ~VideoProcess();
-    void Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &targetCenterY, int &centerLineTolerance, double &contourAreaMinLimit, double &contourAreaMaxLimit, bool &tuningMode, bool &drivingMode, int &trackingMode, bool &takeShapshot, bool &solvePNPEnabled, vector<int> &trackbarValues, vector<double> &trackingResults, vector<double> &solvePNPValues, vector<string> &classList, cv::dnn::Net &onnxModel, unique_ptr<tflite::Interpreter> &tfliteModelInterpreter, VideoGet &VideoGetter, shared_timed_mutex &MutexGet, shared_timed_mutex &MutexShow);
+    void Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &targetCenterY, int &centerLineTolerance, double &contourAreaMinLimit, double &contourAreaMaxLimit, bool &tuningMode, bool &drivingMode, int &trackingMode, bool &takeShapshot, bool &solvePNPEnabled, vector<int> &trackbarValues, vector<double> &trackingResults, vector<double> &solvePNPValues, vector<string> &classList, cv::dnn::Net &onnxModel, unique_ptr<tflite::Interpreter> &tfliteModelInterpreter, float &neuralNetworkMinConfidence, bool &forceONNXModel, VideoGet &VideoGetter, shared_timed_mutex &MutexGet, shared_timed_mutex &MutexShow);
     vector<double> SolveObjectPose(vector<Point2f> imagePoints, Mat &finalImg, Mat &frame, int targetPositionX, int targetPositionY);
     int SignNum(double val);
     void SetIsStopping(bool isStopping);
@@ -101,8 +101,6 @@ private:
     const int SCREEN_WIDTH							    = 640;
     const int SCREEN_HEIGHT							    = 480;
     const int DNN_MODEL_IMAGE_SIZE                      = 640;
-    const double DNN_MINIMUM_CONFIDENCE                 = 0.4;
-    const double DNN_MINIMUM_CLASS_SCORE                = 0.2;
     const double DNN_NMS_THRESH                         = 0.4;
     const double PI                                     = 3.14159265358979323846;
     const double FOCAL_LENGTH						    = (SCREEN_WIDTH / 2.0) / tan((CAMERA_FOV * PI / 180.0) / 2.0);
