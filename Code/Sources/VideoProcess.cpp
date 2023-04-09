@@ -85,11 +85,11 @@ VideoProcess::~VideoProcess()
 /****************************************************************************
         Description:	Processes frames with OpenCV.
 
-        Arguments(dear god help us): MAT&, MAT&, INT&, INT&, DOUBLE&, DOUBLE&, BOOL&, BOOL&, BOOL&, BOOL&, VECTOR<INT>, VECTOR<DOUBLE>, VECTOR<STRING>, CV::DNN::NET, UNIQUE_PTR<TFLITE::INTERPRETER>VIDEOGET, SHARED_TIMED_MUTEX&, SHARED_TIMED_MUTEX&
+        Arguments(dear god help us): MAT&, MAT&, INT&, INT&, DOUBLE&, DOUBLE&, BOOL&, BOOL&, BOOL&, BOOL&, VECTOR<INT>, VECTOR<DOUBLE>, VECTOR<STRING>, CV::DNN::NET, UNIQUE_PTR<TFLITE::INTERPRETER>, FLOAT, BOOL, VIDEOGET, SHARED_TIMED_MUTEX&, SHARED_TIMED_MUTEX&
 
         Returns: 		Nothing
 ****************************************************************************/
-void VideoProcess::Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &targetCenterY, int &centerLineTolerance, double &contourAreaMinLimit, double &contourAreaMaxLimit, bool &tuningMode, bool &drivingMode, int &trackingMode, bool &takeShapshot, bool &solvePNPEnabled, vector<int> &trackbarValues, vector<double> &trackingResults, vector<double> &solvePNPValues, vector<string> &classList, cv::dnn::Net &onnxModel, unique_ptr<tflite::Interpreter> &tfliteModelInterpreter, VideoGet &VideoGetter, shared_timed_mutex &MutexGet, shared_timed_mutex &MutexShow)
+void VideoProcess::Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &targetCenterY, int &centerLineTolerance, double &contourAreaMinLimit, double &contourAreaMaxLimit, bool &tuningMode, bool &drivingMode, int &trackingMode, bool &takeShapshot, bool &solvePNPEnabled, vector<int> &trackbarValues, vector<double> &trackingResults, vector<double> &solvePNPValues, vector<string> &classList, cv::dnn::Net &onnxModel, unique_ptr<tflite::Interpreter> &tfliteModelInterpreter, float &neuralNetworkMinConfidence, bool &forceONNXModel, VideoGet &VideoGetter, shared_timed_mutex &MutexGet, shared_timed_mutex &MutexShow)
 {
     // Give other threads enough time to start before processing camera frames.
     this_thread::sleep_for(std::chrono::milliseconds(800));
@@ -447,114 +447,49 @@ void VideoProcess::Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &t
                         *****************************************************/
                         case FISH_TRACKING:
                         {
-                            // Get model size.
-                            static array<int, 3> shape = GetInputShape(*tfliteModelInterpreter);
-                            // Resize frame to match model size.
-                            resize(frame, frame, Size(shape[0], shape[1]));
-                            // Test inference.
-                            vector<Detection> inferenceResult = RunInference(frame, tfliteModelInterpreter.get());
+                            // Create instance variables.
+                            vector<vector<Detection>> inferenceResult;
+                            // Check if ONNX model use is forced.
+                            if (forceONNXModel)
+                            {
+                                // Run inference on CPU on ONNX model.
+                                inferenceResult = RunONNXInference(frame, onnxModel, neuralNetworkMinConfidence, DNN_MODEL_IMAGE_SIZE);
+                            }
+                            else
+                            {
+                                // Run inference on EdgeTPU on TFLITE model.
+                                inferenceResult = RunInference(*frame, tfliteModelInterpreter.get(), neuralNetworkMinConfidence);
 
-                            // // Calculate the frame width, length, and max size.
-                            // int frameWidth = frame.cols;
-                            // int frameHeight = frame.rows;
-                            // int maxRes = MAX(frameWidth, frameHeight);
-                            // // Make a new square mat with the masRes size.
-                            // Mat resized = Mat::zeros(maxRes, maxRes, CV_8UC3);
-                            // // Copy the camera image into the new resized mat.
-                            // frame.copyTo(resized(Rect(0, 0, frameWidth, frameHeight)));
-                            // // resize(frame, frame, Size(DNN_MODEL_IMAGE_SIZE, DNN_MODEL_IMAGE_SIZE));
-                            
-                            // // Resize to 640x640, normalize to [0,1] and swap red and blue channels. This creates a 4D blob from the image.
-                            // Mat result;
-                            // cv::dnn::blobFromImage(frame, result, 1.0 / 255.0, Size(DNN_MODEL_IMAGE_SIZE, DNN_MODEL_IMAGE_SIZE), Scalar(), true, false);
-                            // // Set the model's current input image.
-                            // onnxModel.setInput(result);
+                                // 
 
-                            // // Forward image through model layers and get the resulting predictions. This is the heavy comp shit.
-                            // vector<Mat> predictions;
-                            // onnxModel.forward(predictions, onnxModel.getUnconnectedOutLayersNames());
-                            // // const Mat &outputs = predictions[0];
-                            
-                            // // Get image and model width and height ratios.
-                            // double widthFactor = double(frameWidth) / DNN_MODEL_IMAGE_SIZE;
-                            // double heightFactor = double(frameHeight) / DNN_MODEL_IMAGE_SIZE;
-                            // // Get class and detection data from output result.
-                            // float *data = (float*)predictions[0].data;
-                            // // Create instance variables for storing data while looping through detections.
-                            // vector<int> classIDs;
-                            // vector<float> confidences;
-                            // vector<Rect> predictionBoxes;
-                            // // Loop through each prediction. This array has 25,200 positions where each position is upto 85-length 1D array. 
-                            // // Each 1D array holds the data of one detection. The 4 first positions of this array are the xywh coordinates 
-                            // // of the bound box rectangle. The fifth position is the confidence level of that detection. The 6th up to 85th 
-                            // // elements are the scores of each class. For COCO with 80 classes outputs will be shape(n,85) with 
-                            // // 85 dimension = (x,y,w,h,object_conf, class0_conf, class1_conf, ...)
-                            // // I'm using ++i because it actually avoids a copy every iteration.
-                            // for (int i = 0; i < 25200; ++i) {
-                            //     // Get the current prediction confidence.
-                            //     float confidence = data[4];
+                                // Remove duplicate detections/average them out.
+                                vector<int> NMSResults;
+                                vector<Detection> finalDetections;
+                                cv::dnn::NMSBoxes(predictionBoxes, confidences, DNN_MINIMUM_CLASS_SCORE, DNN_NMS_THRESH, NMSResults);
+                                for (int i = 0; i < NMSResults.size(); i++) {
+                                    int idx = NMSResults[i];
+                                    Detection result;
+                                    result.classID = classIDs[idx];
+                                    result.confidence = confidences[idx];
+                                    result.box = predictionBoxes[idx];
+                                    finalDetections.push_back(result);
+                                }
 
-                            //     // Check if the confidence is above a certain threashold.
-                            //     if (confidence >= DNN_MINIMUM_CONFIDENCE) {
-                            //         // Get just the class scores from the data array. Stupid pointer manipulation
-                            //         float *classesScores = data + 5;
-                            //         Mat scores(1, classList.size(), CV_32FC1, classesScores);
+                                // Loop through the detections and draw overlay onto final image.
+                                for (Detection detection : finalDetections)
+                                {
+                                    // Get detection info.
+                                    int classID = detection.classID;
+                                    float confidence = detection.confidence;
+                                    Rect detectionBox = detection.box;
+                                    Scalar color = DETECTION_COLORS[classID % DETECTION_COLORS.size()];
 
-                            //         // Find the class id with the max score for each detection.
-                            //         Point classID;
-                            //         double maxClassScore = 0;
-                            //         minMaxLoc(scores, 0, &maxClassScore, 0, &classID);
-                            //         if (maxClassScore > DNN_MINIMUM_CLASS_SCORE) {
-                            //             // Add confidence and class ID to vector arrays.
-                            //             confidences.push_back(confidence);
-                            //             classIDs.push_back(classID.x);
-
-                            //             // Get box data for detection.
-                            //             float x = data[0];
-                            //             float y = data[1];
-                            //             float w = data[2];
-                            //             float h = data[3];
-                            //             // Calculate four corner points.
-                            //             int left = int((x - 0.5 * w) * widthFactor);
-                            //             int top = int((y - 0.5 * h) * heightFactor);
-                            //             int width = int(w * widthFactor);
-                            //             int height = int(h * heightFactor);
-                            //             // Add CV rect to vector array.
-                            //             predictionBoxes.push_back(Rect(left, top, width, height));
-                            //         }
-                            //     }
-
-                            //     // Completely wrap offset data array by the total length of one row.
-                            //     data += classList.size() + 5;
-                            // }
-
-                            // // Remove duplicate detections/average them out.
-                            // vector<int> NMSResults;
-                            // vector<Detection> finalDetections;
-                            // cv::dnn::NMSBoxes(predictionBoxes, confidences, DNN_MINIMUM_CLASS_SCORE, DNN_NMS_THRESH, NMSResults);
-                            // for (int i = 0; i < NMSResults.size(); i++) {
-                            //     int idx = NMSResults[i];
-                            //     Detection result;
-                            //     result.classID = classIDs[idx];
-                            //     result.confidence = confidences[idx];
-                            //     result.box = predictionBoxes[idx];
-                            //     finalDetections.push_back(result);
-                            // }
-
-                            // // Loop through the detections and draw overlay onto final image.
-                            // for (Detection detection : finalDetections)
-                            // {
-                            //     // Get detection info.
-                            //     int classID = detection.classID;
-                            //     float confidence = detection.confidence;
-                            //     Rect detectionBox = detection.box;
-                            //     Scalar color = DETECTION_COLORS[classID % DETECTION_COLORS.size()];
-
-                            //     // Draw detection
-                            //     rectangle(finalImg, detectionBox, color, 3);
-                            //     rectangle(finalImg, Point(detectionBox.x, detectionBox.y - 20), Point(detectionBox.x + detectionBox.width, detectionBox.y), color, FILLED);
-                            //     putText(finalImg, classList[classID].c_str(), Point(detectionBox.x, detectionBox.y - 5), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0));
-                            // }
+                                    // Draw detection
+                                    rectangle(finalImg, detectionBox, color, 3);
+                                    rectangle(finalImg, Point(detectionBox.x, detectionBox.y - 20), Point(detectionBox.x + detectionBox.width, detectionBox.y), color, FILLED);
+                                    putText(finalImg, classList[classID].c_str(), Point(detectionBox.x, detectionBox.y - 5), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0));
+                                }
+                            }
 
                             break;
                         }
