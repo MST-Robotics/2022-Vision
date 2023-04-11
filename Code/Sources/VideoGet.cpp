@@ -144,8 +144,8 @@ void VideoGet::StartCapture(Mat &visionFrame, Mat &leftStereoFrame, Mat &rightSt
             break;
         }
 
-        // Sleep to save CPU time. Thead management doesn't need to update very fast.
-        this_thread::sleep_for(std::chrono::milliseconds(30));
+        // Sleep to save CPU time. Thread management doesn't need to update very fast.
+        this_thread::sleep_for(std::chrono::milliseconds(20));
     }
 
     // Loop through the threads in the threads vector and join them.

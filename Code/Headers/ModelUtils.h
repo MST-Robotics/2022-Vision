@@ -159,12 +159,12 @@ inline vector<vector<Detection>> RunInference(Mat& inputImage, tflite::Interpret
     int originalInputImageHeight = inputImage.rows;
 
     // Resize frame to match model size.
-    resize(inputImage, inputImage, Size(inputShape[0], inputShape[1]), INTER_CUBIC);
+    resize(inputImage, inputImage, Size(inputShape[0], inputShape[1]));
     // Check model size and make sure it matches the given input image.
     if (inputShape[0] == inputImage.rows && inputShape[1] == inputImage.cols)
     {
         // Create a vector input image mat into 1 dimension.
-        vector<uint8_t> inputData(inputImage.begin<uint8_t>(), inputImage.end<uint8_t>());
+        vector<uint8_t> inputData(inputImage.data, inputImage.data + (inputImage.cols * inputImage.rows * inputImage.elemSize()));
         // Create a new tensor and copy our input data into it.
         uint8_t* input = interpreter->typed_input_tensor<uint8_t>(interpreter->inputs()[0]);
         memcpy(input, inputData.data(), inputData.size());
@@ -279,16 +279,18 @@ inline vector<vector<Detection>> RunInference(Mat& inputImage, tflite::Interpret
                         minMaxLoc(scores, 0, &maxClassScore, 0, &classID);
                         int id = classID.x;
                         // Calculate bounding box location and scale to input image.
-                        int xmin = outputData[i][j][0] * originalInputImageWidth;
-                        int ymin = outputData[i][j][1] * originalInputImageHeight;
+                        int centerx = outputData[i][j][0] * originalInputImageWidth;
+                        int centery = outputData[i][j][1] * originalInputImageHeight;
                         int width = outputData[i][j][2] * originalInputImageWidth;
                         int height = outputData[i][j][3] * originalInputImageHeight;
+                        int left = int(centerx - (0.5 * width));
+                        int top = int(centery - (0.5 * height));
                         
                         // Create name object variable and store info inside of it.
                         Detection object;
                         object.classID = id;
-                        object.box.x = xmin;
-                        object.box.y = ymin;
+                        object.box.x = left;
+                        object.box.y = top;
                         object.box.width = width;
                         object.box.height = height;
                         object.confidence = predConfidence;
