@@ -159,7 +159,7 @@ inline vector<vector<Detection>> RunInference(Mat& inputImage, tflite::Interpret
     int originalInputImageHeight = inputImage.rows;
 
     // Resize frame to match model size.
-    resize(inputImage, inputImage, Size(inputShape[0], inputShape[1]));
+    resize(inputImage, inputImage, Size(inputShape[0], inputShape[1]), INTER_LINEAR);
     // Check model size and make sure it matches the given input image.
     if (inputShape[0] == inputImage.rows && inputShape[1] == inputImage.cols)
     {
@@ -187,7 +187,7 @@ inline vector<vector<Detection>> RunInference(Mat& inputImage, tflite::Interpret
             // Loop through output tensors and extract data.
             for (int i = 0; i < numOutputs; ++i) 
             {
-                // Get tensor.
+                // Get output tensor frmo the interpreter.
                 const auto* outTensor = interpreter->tensor(outputIndices[i]);
                 assert(outTensor != nullptr);
 
