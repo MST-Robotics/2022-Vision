@@ -183,22 +183,25 @@ inline vector<vector<Detection>> RunInference(Mat& inputImage, tflite::Interpret
             const int numOutputs = outputIndices.size();
             // Set tensor output shape and resize output data to match.
             outputData.resize(numOutputs);
+            // Set size of object vector.
+            objects.resize(numOutputs);
 
             // Loop through output tensors and extract data.
             for (int i = 0; i < numOutputs; ++i) 
             {
-                // Get output tensor frmo the interpreter.
-                const auto* outTensor = interpreter->tensor(outputIndices[i]);
+                // Get output tensor from the interpreter.
+                const TfLiteTensor* outTensor = interpreter->tensor(outputIndices[i]);
                 assert(outTensor != nullptr);
+                // Get zero point and scale from each data point. Must rescale if model is quantized.
+                auto quantZeroPoint = outTensor->params.zero_point;
+                auto quantScale = outTensor->params.scale;
+
+                // Get the dimensions of the output layer of the model.
+                array<int, 3> outputShape = GetOutputShape(*interpreter, i);
 
                 // Check tensor type. UINT8 == TPU, FLOAT32 == GPU
                 if (outTensor->type == kTfLiteUInt8) 
-                {
-                    // Get data out of tensor.
-                    const uint8_t* output = interpreter->typed_output_tensor<uint8_t>(i);
-                    
-                    // Get the dimensions of the output layer of the model.
-                    array<int, 3> outputShape = GetOutputShape(*interpreter, i);
+                {                    
                     // Resize vector to match output size.
                     outputData[i].resize(outputShape[0]);                    
 
@@ -214,21 +217,47 @@ inline vector<vector<Detection>> RunInference(Mat& inputImage, tflite::Interpret
                         for (int k = 0; k < outputShape[1]; ++k)
                         {
                             // Get actual data stored in tensor and scale it.
-                            outputData[i][j][k] = (output[totalNumValuesCounter] - outTensor->params.zero_point) * outTensor->params.scale;
-                            // outputData[i][j][k] = output[totalNumValuesCounter];
+                            outputData[i][j][k] = (outTensor->data.uint8[totalNumValuesCounter] - quantZeroPoint) * quantScale;
 
                             // Increment counter.
                             totalNumValuesCounter++;
                         }
+
+                        // This code creats a Object for the current prediction and calulates rect coords for each, then store the calculated data into a new Object struct if score is higher than given threshold.
+                        // Predictions have format {centerx, centery, width, height, conf, class0, class1, ...}
+                        // Get detection score/confidence.
+                        float predConfidence = outputData[i][j][4];
+                        // Check if score is greater than or equal to minimum confidence.
+                        if (predConfidence >= confidence)
+                        {
+                            // Get the class id.
+                            Point classID;
+                            double maxClassScore = 0;
+                            Mat scores(1, (outputData[i][j].size() - 5), CV_32FC1, &(outputData[i][j][5]));
+                            minMaxLoc(scores, 0, &maxClassScore, 0, &classID);
+                            int id = classID.x;
+                            // Calculate bounding box location and scale to input image.
+                            int centerx = outputData[i][j][0] * originalInputImageWidth;
+                            int centery = outputData[i][j][1] * originalInputImageHeight;
+                            int width = outputData[i][j][2] * originalInputImageWidth;
+                            int height = outputData[i][j][3] * originalInputImageHeight;
+                            int left = int(centerx - (0.5 * width));
+                            int top = int(centery - (0.5 * height));
+                            
+                            // Create name object variable and store info inside of it.
+                            Detection object;
+                            object.classID = id;
+                            object.box.x = left;
+                            object.box.y = top;
+                            object.box.width = width;
+                            object.box.height = height;
+                            object.confidence = predConfidence;
+                            objects[i].push_back(object);
+                        }
                     }
                 } 
                 else if (outTensor->type == kTfLiteFloat32)
-                {
-                    // Get data out of tensor.
-                    const float* output = interpreter->typed_output_tensor<float>(i);
-                    
-                    // Get the dimensions of the output layer of the model.
-                    array<int, 3> outputShape = GetOutputShape(*interpreter, i);
+                {                    
                     // Resize vector to match output size.
                     outputData[i].resize(outputShape[0]);                    
 
@@ -244,8 +273,7 @@ inline vector<vector<Detection>> RunInference(Mat& inputImage, tflite::Interpret
                         for (int k = 0; k < outputShape[1]; ++k)
                         {
                             // Get actual data stored in tensor and scale it.
-                            outputData[i][j][k] = (output[totalNumValuesCounter] - outTensor->params.zero_point) * outTensor->params.scale;
-                            // outputData[i][j][k] = output[totalNumValuesCounter];
+                            outputData[i][j][k] = (outTensor->data.uint8[totalNumValuesCounter] - quantZeroPoint) * quantScale;
 
                             // Increment counter.
                             totalNumValuesCounter++;
@@ -256,46 +284,6 @@ inline vector<vector<Detection>> RunInference(Mat& inputImage, tflite::Interpret
                 {
                     // If Tensor is curropted or nonsensical.
                     cout << "Tensor " << outTensor->name << " has unsupported output type: " << outTensor->type << endl;
-                }
-            }
-                
-            // Set size of object vector.
-            objects.resize(outputData.size());
-            // Loop through detections and calulate rect coords for each, then store the calculated data into a new Object struct if score is higher than given threshold.
-            // Detections have format {xmin, ymin, width, height, conf, class0, class1, ...}
-            for (int i = 0; i < outputData.size(); ++i)
-            {
-                for (int j = 0; j < outputData[i].size(); ++j)
-                {
-                    // Get detection score/confidence.
-                    float predConfidence = outputData[i][j][4];
-                    // Check if score is greater than or equal to minimum confidence.
-                    if (predConfidence >= confidence)
-                    {
-                        // Get the class id.
-                        Point classID;
-                        double maxClassScore = 0;
-                        Mat scores(1, (outputData[i][j].size() - 5), CV_32FC1, &(outputData[i][j][5]));
-                        minMaxLoc(scores, 0, &maxClassScore, 0, &classID);
-                        int id = classID.x;
-                        // Calculate bounding box location and scale to input image.
-                        int centerx = outputData[i][j][0] * originalInputImageWidth;
-                        int centery = outputData[i][j][1] * originalInputImageHeight;
-                        int width = outputData[i][j][2] * originalInputImageWidth;
-                        int height = outputData[i][j][3] * originalInputImageHeight;
-                        int left = int(centerx - (0.5 * width));
-                        int top = int(centery - (0.5 * height));
-                        
-                        // Create name object variable and store info inside of it.
-                        Detection object;
-                        object.classID = id;
-                        object.box.x = left;
-                        object.box.y = top;
-                        object.box.width = width;
-                        object.box.height = height;
-                        object.confidence = predConfidence;
-                        objects[i].push_back(object);
-                    }
                 }
             }
         }

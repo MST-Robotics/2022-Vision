@@ -667,7 +667,9 @@ int main(int argc, char* argv[])
 		{
 			cout << "Unable to open CoralUSB device. Defualting to CPU Tensorflow interpreter." << endl;
 			tfliteModelInterpreter = BuildInterpreter(*tfliteModel);
-			cout << "WARNING: CPU Tensorflow interpreter has been loaded and is probably broken." << endl;
+			cout << "WARNING: CPU Tensorflow interpreter has been loaded and is probably broken. Setting force ONNX toggle! If this if toggled off, the program will probably crash." << endl;
+			// Set ONNX model toggle to on.
+			NetworkTable->PutBoolean("Force ONNX Model", true);
 		}
 		else
 		{
