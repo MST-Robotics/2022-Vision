@@ -566,7 +566,9 @@ int main(int argc, char* argv[])
 	else 
 	{
 		cout << "Setting up NetworkTables client for team " << team << "\n";
-		NetworkTablesInstance.StartClientTeam(team);
+		NetworkTablesInstance.StartClient4("multiCameraServer");
+		NetworkTablesInstance.SetServerTeam(team);
+		NetworkTablesInstance.StartDSClient();
 	}
 
 	// Give network tables some time to connect before initializing values.
@@ -619,11 +621,34 @@ int main(int argc, char* argv[])
 	}
 
 	/**************************************************************************
+				Load Neural Network Class List for opencv CPU processing.
+	**************************************************************************/
+	// Create DNN model object.
+	vector<string> classList;
+	// Start loading yolo model.
+	try
+	{
+		cout << "\nAttempting to load Class List for models..." << endl;
+		// Get class list.
+		ifstream ifs(string(YoloModelFilePath + "classes.txt"));
+		string line;
+		while (getline(ifs, line))
+		{
+			classList.push_back(line);
+		}
+		cout << "Class List loaded successfully." << endl;
+	}
+	catch (const exception& e)
+	{
+		// Print error to console and show that an error has occured on the screen.
+		cout << "\nERROR: Unable to load Class List for models, NEURAL NETWORK INFERENCING WILL NOT WORK!" << "\n" << e.what() << endl;
+	}
+
+	/**************************************************************************
 				Load Neural Network Model for opencv CPU processing.
 	**************************************************************************/
 	// Create DNN model object.
 	cv::dnn::Net onnxModel;
-	vector<string> classList;
 	// Start loading yolo model.
 	try
 	{
@@ -655,6 +680,9 @@ int main(int argc, char* argv[])
 	// Start loading yolo model.
 	try
 	{
+		// Set ONNX model toggle to on.
+		NetworkTable->PutBoolean("Force ONNX Model", true);
+
 		// Attempt to open the tflite model.
 		cout << "Attempting to open EdgeTPU TFLITE model..." << endl;
 		tfliteModel = tflite::FlatBufferModel::BuildFromFile(string(YoloModelFilePath + "best.tflite").c_str());
@@ -668,8 +696,6 @@ int main(int argc, char* argv[])
 			cout << "Unable to open CoralUSB device. Defualting to CPU Tensorflow interpreter." << endl;
 			tfliteModelInterpreter = BuildInterpreter(*tfliteModel);
 			cout << "WARNING: CPU Tensorflow interpreter has been loaded and is probably broken. Setting force ONNX toggle! If this if toggled off, the program will probably crash." << endl;
-			// Set ONNX model toggle to on.
-			NetworkTable->PutBoolean("Force ONNX Model", true);
 		}
 		else
 		{
@@ -678,6 +704,8 @@ int main(int argc, char* argv[])
 			// Create a Tensorflow interpreter with the opened model and the opened EdgeTPU device.
 			tfliteModelInterpreter = BuildEdgeTpuInterpreter(*tfliteModel, edgetpuContext.get());
 			cout << "SUCCESS: EdgeTPU Tensorflow interpreter has been loaded with CoralUSB device." << endl;
+			// Set ONNX model toggle to off.
+			NetworkTable->PutBoolean("Force ONNX Model", false);
 		}		
 	}
 	catch (const exception& e)

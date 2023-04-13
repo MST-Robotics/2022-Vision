@@ -540,10 +540,11 @@ void VideoProcess::Process(Mat &frame, Mat &finalImg, int &targetCenterX, int &t
                                     // Get detection info.
                                     Scalar color = DETECTION_COLORS[detection.classID % DETECTION_COLORS.size()];
 
-                                    // Draw detection
+                                    // // Draw detection
                                     rectangle(finalImg, detection.box, color, 3);
                                     rectangle(finalImg, Point(detection.box.x, detection.box.y - 20), Point(detection.box.x + detection.box.width, detection.box.y), color, FILLED);
-                                    putText(finalImg, string(classList[detection.classID].c_str()) + " " + to_string(detection.confidence), Point(detection.box.x, detection.box.y - 5), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0));
+                                    // string test = classList[detection.classID];
+                                    putText(finalImg, classList[detection.classID] + " " + to_string(detection.confidence), Point(detection.box.x, detection.box.y - 5), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0));
                                 }
                             }
 

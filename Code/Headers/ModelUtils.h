@@ -256,33 +256,9 @@ inline vector<vector<Detection>> RunInference(Mat& inputImage, tflite::Interpret
                         }
                     }
                 } 
-                else if (outTensor->type == kTfLiteFloat32)
-                {                    
-                    // Resize vector to match output size.
-                    outputData[i].resize(outputShape[0]);                    
-
-                    // Reshape and store data in more usable vector.
-                    // Loop through 1 dimensional array of length outputshape[0] * outputshape[1] and reshape it into yolo_grid_cellsx(5 + number of classes.)
-                    int totalNumValuesCounter = 0;
-                    for (int j = 0; j < outputShape[0]; ++j) 
-                    {
-                        // Resize vector to match output size.
-                        outputData[i][j].resize(outputShape[1]);
-
-                        // Loop through the next (5 + num classes) elements.
-                        for (int k = 0; k < outputShape[1]; ++k)
-                        {
-                            // Get actual data stored in tensor and scale it.
-                            outputData[i][j][k] = (outTensor->data.uint8[totalNumValuesCounter] - quantZeroPoint) * quantScale;
-
-                            // Increment counter.
-                            totalNumValuesCounter++;
-                        }
-                    }
-                } 
                 else 
                 {
-                    // If Tensor is curropted or nonsensical.
+                    // If Tensor is corrupted or nonsensical.
                     cout << "Tensor " << outTensor->name << " has unsupported output type: " << outTensor->type << endl;
                 }
             }

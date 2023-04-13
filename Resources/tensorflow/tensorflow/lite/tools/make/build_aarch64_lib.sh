@@ -25,7 +25,7 @@ FREE_MEM="$(free -m | awk '/^Mem/ {print $2}')"
 if [[ "FREE_MEM" -gt "2000" ]]; then
   NO_JOB=4
 else
-  NO_JOB=1
+  NO_JOB=3
 fi
 
 make -j ${NO_JOB} TARGET=aarch64 -C "${TENSORFLOW_DIR}" -f tensorflow/lite/tools/make/Makefile $@

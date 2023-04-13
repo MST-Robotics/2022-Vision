@@ -101,7 +101,7 @@ private:
     const int SCREEN_WIDTH							    = 640;
     const int SCREEN_HEIGHT							    = 480;
     const int DNN_MODEL_IMAGE_SIZE                      = 640;
-    const double DNN_NMS_THRESH                         = 0.4;
+    const float DNN_NMS_THRESH                         = 0.4;
     const double PI                                     = 3.14159265358979323846;
     const double FOCAL_LENGTH						    = (SCREEN_WIDTH / 2.0) / tan((CAMERA_FOV * PI / 180.0) / 2.0);
     const vector<Scalar> DETECTION_COLORS               = {Scalar(255, 255, 0), Scalar(0, 255, 0), Scalar(0, 255, 255), Scalar(255, 0, 0)};
